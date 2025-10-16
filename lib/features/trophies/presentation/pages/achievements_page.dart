@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/achievement_type.dart';
-import '../widgets/achievement_unlock_screen.dart';
-import '../widgets/app_colors.dart';
+import '../../../../shared/models/achievement_type.dart';
+import '../widgets/common/achievement_unlock_screen.dart';
+import '../../../../shared/widgets/app_colors.dart';
 
 class AchievementsPage extends StatelessWidget {
   const AchievementsPage({Key? key}) : super(key: key);

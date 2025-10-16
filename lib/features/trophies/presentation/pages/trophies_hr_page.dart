@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import '/shared/models/achievement_type.dart';
-import '/shared/widgets/achievement_unlock_screen.dart';
+import '../widgets/common/achievement_unlock_screen.dart';
 
-class TrophiesStudentPage extends StatelessWidget {
-  const TrophiesStudentPage({Key? key}) : super(key: key);
+class TrophiesHRPage extends StatelessWidget {
+  const TrophiesHRPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final trophies = Achievement.getAchievementsByRole(AchievementRole.student);
+    final trophies = Achievement.getAchievementsByRole(AchievementRole.hr);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Trophées Étudiant'),
-        backgroundColor: Color(0xFF1C8B4B),
+        title: const Text('Trophées HR'),
+        backgroundColor: Color(0xFF8B1C1C),
         foregroundColor: Colors.white,
       ),
       backgroundColor: Colors.white,

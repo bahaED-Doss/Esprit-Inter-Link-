@@ -17,8 +17,8 @@ import 'shared/presentation/todo/pm_projects_page.dart';
 import 'shared/presentation/todo/pm_interns_page.dart';
 import 'shared/presentation/todo/pm_tasks_page.dart';
 import 'features/trophies/presentation/pages/student_trophies_page.dart';
-import 'shared/presentation/pages/trophies_hr_page.dart';
-import 'shared/presentation/pages/trophies_pm_page.dart';
+import 'features/trophies/presentation/pages/trophies_pm_page.dart';
+import 'features/trophies/presentation/pages/trophies_hr_page.dart';
 
 
 void main() {
@@ -54,37 +54,7 @@ class MyApp extends StatelessWidget {
         '/projects': (context) => const PMProjectsPage(),
         '/interns': (context) => const PMInternsPage(),
         '/tasks': (context) => const PMTasksPage(),
-        '/trophies': (context) => StudentTrophiesPage(
-              trophies: [
-                TrophyModel(
-                  id: '1',
-                  name: 'Rising Star',
-                  description: 'Received Outstanding Feedback',
-                  xpPoints: 250,
-                  message: 'Your supervisor is impressed. Shine bright!',
-                  locked: false,
-                  iconName: 'star',
-                ),
-                TrophyModel(
-                  id: '2',
-                  name: 'Welcome Aboard!',
-                  description: 'You\'re officially an intern',
-                  xpPoints: 100,
-                  message: 'Your journey begins here. Time to make an impact!',
-                  locked: true,
-                  iconName: 'bag',
-                ),
-                TrophyModel(
-                  id: '3',
-                  name: 'Quiz Master',
-                  description: 'Completed all quizzes',
-                  xpPoints: 150,
-                  message: 'Knowledge is power!',
-                  locked: true,
-                  iconName: 'medal',
-                ),
-              ],
-            ),
+        '/trophies': (context) => const StudentTrophiesPage(),
         '/trophies_hr': (context) => const TrophiesHRPage(),
         '/trophies_pm': (context) => const TrophiesPMPage(),
       },

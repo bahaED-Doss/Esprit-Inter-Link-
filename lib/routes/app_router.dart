@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'route_names.dart';
 import '../shared/presentation/pages/SplashScreen.dart';
 import '../features/home/pages/home_page.dart';
-import '../shared/presentation/pages/trophies_page.dart';
+import '../features/trophies/presentation/pages/trophies_page.dart';
 
 /// App-wide routing configuration
 /// Your team can add their feature routes here

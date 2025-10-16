@@ -144,5 +144,144 @@ final result = await db.query('offers', where: 'hr_id = ?', whereArgs: [hrId]);
 
 ---
 
+# 🏆 Déclencheurs de trophées (Trophies Triggers)
 
+Pour chaque trophée, ajoutez ce code dans la partie concernée de votre module pour débloquer le trophée côté utilisateur :
 
+---
+
+## 🎓 Étudiant (Student)
+
+- **Profile Pioneer** (Profil complété)
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.studentProfilePioneer);
+```
+À placer après la validation du profil étudiant.
+
+- **Welcome Aboard** (Devenir stagiaire)
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.studentWelcomeAboard);
+```
+À placer quand le HR accepte la candidature d’un étudiant (statut accepté).
+
+- **Task Warrior** (5 tâches complétées)
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.studentTaskWarrior);
+```
+À placer après la validation de la 5ème tâche par l’étudiant.
+
+- **Rising Star** (Feedback exceptionnel)
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.studentRisingStar);
+```
+À placer quand le superviseur donne un feedback exceptionnel.
+
+- **Quiz Master** (3 quiz complétés)
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.studentQuizMaster);
+```
+À placer après la validation du 3ème quiz.
+
+- **First Week Champion** (Première semaine terminée)
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.studentFirstWeekChampion);
+```
+À placer à la fin de la première semaine de stage.
+
+- **Internship Legend** (Stage terminé)
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.studentInternshipLegend);
+```
+À placer à la fin du stage (statut terminé).
+
+---
+
+## 🏢 HR
+
+- **Profile Pioneer**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.hrProfilePioneer);
+```
+Après la complétion du profil HR.
+
+- **Company Champion**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.hrCompanyChampion);
+```
+Après la complétion du profil entreprise.
+
+- **First Opportunity**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.hrFirstOpportunity);
+```
+Après la publication de la première offre.
+
+- **Opportunity Maker**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.hrOpportunityMaker);
+```
+Après la publication de la 3ème offre.
+
+- **Talent Scout**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.hrTalentScout);
+```
+Après avoir accepté le premier étudiant.
+
+- **Team Builder**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.hrTeamBuilder);
+```
+Après avoir accepté 5 étudiants.
+
+---
+
+## 🗂️ Project Manager
+
+- **Profile Pioneer**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.pmProfilePioneer);
+```
+Après la complétion du profil PM.
+
+- **Project Initiator**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.pmProjectInitiator);
+```
+Après la création du premier projet.
+
+- **Project Architect**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.pmProjectArchitect);
+```
+Après la création du 3ème projet.
+
+- **Task Master**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.pmTaskMaster);
+```
+Après la création de la première tâche.
+
+- **Delegation Expert**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.pmDelegationExpert);
+```
+Après la création de la 5ème tâche.
+
+- **Project Finisher**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.pmProjectFinisher);
+```
+Après avoir terminé le premier projet (statut terminé).
+
+- **Project Legend**
+```dart
+await TrophyService.unlockTrophy(context, AchievementType.pmProjectLegend);
+```
+Après avoir terminé 3 projets (statut terminé).
+
+---
+
+> Remplacez `TrophyService.unlockTrophy` par la fonction réelle de votre service de trophées si besoin.
+
+---

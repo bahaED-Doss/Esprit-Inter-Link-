@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/achievement_type.dart';
-import '../widgets/app_colors.dart';
+import '../../../../../shared/models/achievement_type.dart';
+import '../../../../../shared/widgets/app_colors.dart';
 
 class AchievementUnlockScreen extends StatefulWidget {
   final Achievement achievement;

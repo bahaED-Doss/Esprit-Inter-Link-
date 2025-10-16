@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '/shared/models/achievement_type.dart';
-import '/shared/widgets/achievement_unlock_screen.dart';
+import '../widgets/common/achievement_unlock_screen.dart';
 
 class TrophiesPMPage extends StatelessWidget {
   const TrophiesPMPage({Key? key}) : super(key: key);
