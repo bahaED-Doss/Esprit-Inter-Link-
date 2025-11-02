@@ -189,9 +189,9 @@ class _StudentTaskViewState extends State<StudentTaskView> {
             final isWide = mq.orientation == Orientation.landscape || mq.size.width > 700;
 
             if (isWide) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: KanbanBoard(isPM: false),
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: KanbanBoard(isPM: false, userId: widget.userId),
               );
             }
 

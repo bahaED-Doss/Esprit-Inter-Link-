@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/task_database_helper.dart';
 import '../models/task_model.dart';
+import '../../../data/datasources/local/database_helper.dart' as CoreDB;
 
 /// Provider pour la gestion d'état des tâches - Équivalent d'un Service Angular/Spring
 /// Utilise le pattern ChangeNotifier pour notifier les widgets des changements
@@ -15,7 +16,6 @@ class TaskProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   String _searchQuery = '';
-
   // Track last load params so we can reload after edits
   int? _lastProjectId;
   int? _lastUserId;
@@ -79,6 +79,29 @@ class TaskProvider extends ChangeNotifier {
       _applyFilters();
 
       _error = null;
+
+      // Notification: informer l'étudiant assigné au projet
+      try {
+        final project = await CoreDB.DatabaseHelper.getProjectById(inserted.projectId);
+        final projectName = project?['name'] as String? ?? 'Project';
+        final assignedEmail = project?['assigned_to'] as String?;
+        if (assignedEmail != null && assignedEmail.trim().isNotEmpty) {
+          final userId = await CoreDB.DatabaseHelper.findUserIdByEmail(assignedEmail.trim());
+          if (userId != null) {
+            final title = 'New task added';
+            final message = '"${inserted.title}" added to "$projectName"';
+            await CoreDB.DatabaseHelper.insertNotification(
+              userId: userId,
+              title: title,
+              message: message,
+              type: 'TASK',
+              referenceId: inserted.projectId,
+            );
+          }
+        }
+      } catch (e) {
+        print('Warn: failed to enqueue student notification: $e');
+      }
     } catch (e) {
       _error = 'Erreur lors de l\'ajout de la tâche: $e';
       print(_error);
@@ -103,7 +126,6 @@ class TaskProvider extends ChangeNotifier {
       if (idxAll != -1) {
         _allTasks[idxAll] = updated;
       } else {
-        // Si pour une raison quelconque la tâche n'est pas dans _allTasks, on l'ajoute
         _allTasks.insert(0, updated);
       }
 
@@ -117,6 +139,32 @@ class TaskProvider extends ChangeNotifier {
         await loadTasks(projectId: _lastProjectId, userId: _lastUserId);
       } catch (e) {
         print('Warning: reload after editTask failed: $e');
+      }
+
+      // Notification: si plus aucune tâche ouverte pour ce projet, notifier le PM
+      try {
+        final openCount = await CoreDB.DatabaseHelper.countOpenTasksForProject(updated.projectId);
+        if (openCount == 0) {
+          final pmUserId = await CoreDB.DatabaseHelper.getPMUserIdForProject(updated.projectId);
+          if (pmUserId != null) {
+            final hasUnread = await CoreDB.DatabaseHelper.hasUnreadEmptyProjectNotification(pmUserId, updated.projectId);
+            if (!hasUnread) {
+              final project = await CoreDB.DatabaseHelper.getProjectById(updated.projectId);
+              final projectName = project?['name'] as String? ?? 'Project';
+              final title = 'No tasks left';
+              final message = '"$projectName" has no tasks to do. Add new tasks or finish the project?';
+              await CoreDB.DatabaseHelper.insertNotification(
+                userId: pmUserId,
+                title: title,
+                message: message,
+                type: 'PROJECT',
+                referenceId: updated.projectId,
+              );
+            }
+          }
+        }
+      } catch (e) {
+        print('Warn: failed to enqueue PM empty-project notification: $e');
       }
     } catch (e) {
       _error = 'Erreur lors de la modification de la tâche: $e';

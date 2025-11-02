@@ -124,14 +124,10 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
+        userId INTEGER NOT NULL,
         message TEXT NOT NULL,
-        type TEXT CHECK(type IN ('TROPHY', 'TASK', 'PROJECT', 'SYSTEM')) DEFAULT 'SYSTEM',
-        reference_id INTEGER,
-        is_read INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        read INTEGER DEFAULT 0,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
       );
     ''');
 
@@ -173,6 +169,23 @@ class DatabaseHelper {
         // ignore si existe déjà
       }
     }
+
+    // S'assurer que la table notifications existe
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          type TEXT CHECK(type IN ('TROPHY', 'TASK', 'PROJECT', 'SYSTEM')) DEFAULT 'SYSTEM',
+          reference_id INTEGER,
+          is_read INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+      ''');
+    } catch (_) {}
   }
 
   static Future<void> _insertMockUsers(Database db) async {
@@ -361,6 +374,96 @@ class DatabaseHelper {
     return await getTasksByProjectId(projectId);
   }
 
+  // =======================
+  // Notification utilities
+  // =======================
+
+  static Future<int> insertNotification({
+    required int userId,
+    required String title,
+    required String message,
+    String type = 'SYSTEM',
+    int? referenceId,
+  }) async {
+    final db = await database;
+    return await db.insert('notifications', {
+      'user_id': userId,
+      'title': title,
+      'message': message,
+      'type': type,
+      'reference_id': referenceId,
+      'is_read': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  static Future<List<Map<String, dynamic>>> getNotificationsForUser(int userId, {bool unreadOnly = false}) async {
+    final db = await database;
+    final where = unreadOnly ? 'user_id = ? AND is_read = 0' : 'user_id = ?';
+    final rows = await db.query(
+      'notifications',
+      where: where,
+      whereArgs: [userId],
+      orderBy: 'created_at DESC',
+    );
+    return rows;
+  }
+
+  static Future<int> getUnreadNotificationCount(int userId) async {
+    final db = await database;
+    final res = await db.rawQuery('SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND is_read = 0', [userId]);
+    return Sqflite.firstIntValue(res) ?? 0;
+  }
+
+  static Future<int> markAllNotificationsRead(int userId) async {
+    final db = await database;
+    return await db.update('notifications', {'is_read': 1}, where: 'user_id = ? AND is_read = 0', whereArgs: [userId]);
+  }
+
+  // ==================
+  // Project/user utils
+  // ==================
+
+  static Future<Map<String, dynamic>?> getProjectById(int projectId) async {
+    final db = await database;
+    final rows = await db.query('projects', where: 'id = ?', whereArgs: [projectId], limit: 1);
+    if (rows.isEmpty) return null;
+    return rows.first;
+  }
+
+  static Future<int?> findUserIdByEmail(String email) async {
+    final db = await database;
+    final rows = await db.query('users', where: 'email = ?', whereArgs: [email], limit: 1);
+    if (rows.isEmpty) return null;
+    return rows.first['id'] as int?;
+  }
+
+  static Future<int?> getPMUserIdForProject(int projectId) async {
+    final project = await getProjectById(projectId);
+    if (project == null) return null;
+    return project['pm_id'] as int?;
+  }
+
+  static Future<int> countOpenTasksForProject(int projectId) async {
+    final db = await database;
+    final res = await db.rawQuery(
+      "SELECT COUNT(*) as c FROM tasks WHERE projectId = ? AND status IN ('TO_DO','DOING')",
+      [projectId],
+    );
+    return Sqflite.firstIntValue(res) ?? 0;
+  }
+
+  static Future<bool> hasUnreadEmptyProjectNotification(int pmUserId, int projectId) async {
+    final db = await database;
+    final res = await db.query(
+      'notifications',
+      where: 'user_id = ? AND type = ? AND reference_id = ? AND is_read = 0',
+      whereArgs: [pmUserId, 'PROJECT', projectId],
+      limit: 1,
+    );
+    return res.isNotEmpty;
+  }
+
   // Méthodes utilitaires
   static Future<void> resetDatabase() async {
     final dbPath = await _initDatabase();
@@ -397,5 +500,12 @@ class DatabaseHelper {
       print('   - $name ($count rows)');
     }
     print('=' * 60 + '\n');
+  }
+
+  static Future<Map<String, dynamic>?> getUserById(int userId) async {
+    final db = await database;
+    final rows = await db.query('users', where: 'id = ?', whereArgs: [userId], limit: 1);
+    if (rows.isEmpty) return null;
+    return rows.first;
   }
 }

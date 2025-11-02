@@ -85,7 +85,7 @@ class MyApp extends StatelessWidget {
             ),
         '/role_select': (context) => RoleSelectScreen(),
         '/student_home': (context) => const StudentHomePage(),
-        '/hr_home': (context) => const HRHomePage(),
+        '/hr_home': (context) => const HRHomePage(userId: 3), // HR mock userId
         '/pm_home': (context) => const PMHomePage(),
         '/studentProfile': (context) => const StudentProfilePage(),
         '/offers': (context) => const StudentOffersPage(),

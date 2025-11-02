@@ -147,7 +147,7 @@ class _PMTaskViewState extends State<PMTaskView> {
                     // Kanban board
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: KanbanBoard(isPM: true),
+                      child: KanbanBoard(isPM: true, userId: _selectedProject?.pmId ?? 1),
                     );
                   }
 

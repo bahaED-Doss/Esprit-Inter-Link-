@@ -5,6 +5,7 @@ import '../todo/saved_offers_page.dart';
 import '../../../features/ats/ats_page.dart';
 import '../../../features/tasks/presentation/pages/student_task_view.dart';
 import '../../../data/datasources/local/database_helper.dart';
+import '../../data/notification_service.dart';
 
 class StudentHomePage extends StatefulWidget {
   const StudentHomePage({Key? key}) : super(key: key);
@@ -25,6 +26,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
   int _selectedIndex = 0;
   bool _quizClicked = false;
   bool _candidatesClicked = false;
+  int _unreadCount = 0;
   List<String> icons = [
     'assets/icons/Home.png',
     'assets/icons/internshipD.png',
@@ -44,6 +46,16 @@ class _StudentHomePageState extends State<StudentHomePage> {
   void initState() {
     super.initState();
     _initStudentData();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    if (_studentId != null) {
+      final count = await NotificationService.getUnreadCount(_studentId!);
+      setState(() {
+        _unreadCount = count;
+      });
+    }
   }
 
   Future<void> _initStudentData() async {
@@ -59,6 +71,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
         _studentId = u['id'] as int?;
         hasInternship = (u['internship_status'] as String?) == 'INTERN';
       });
+      await _refreshUnread();
     }
 
     // Récupérer le projet assigné à cet email (s'il existe)
@@ -69,6 +82,12 @@ class _StudentHomePageState extends State<StudentHomePage> {
         _assignedProjectName = project['name'] as String?;
       });
     }
+  }
+
+  Future<void> _refreshUnread() async {
+    if (_studentId == null) return;
+    final c = await DatabaseHelper.getUnreadNotificationCount(_studentId!);
+    if (mounted) setState(() => _unreadCount = c);
   }
 
   void _onLongPressStartMiddleButton(LongPressStartDetails details) {
@@ -225,12 +244,46 @@ class _StudentHomePageState extends State<StudentHomePage> {
                             ),
                             const SizedBox(width: 12),
                             IconButton(
-                              icon: const Icon(Icons.notifications_none, color: Colors.white),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const NotificationPage()),
-                                );
+                              icon: Stack(
+                                children: [
+                                  const Icon(Icons.notifications_none, color: Colors.white),
+                                  if (_unreadCount > 0)
+                                    Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 16,
+                                          minHeight: 16,
+                                        ),
+                                        child: Text(
+                                          '$_unreadCount',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              onPressed: () async {
+                                if (_studentId != null) {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => NotificationPage(userId: _studentId!),
+                                    ),
+                                  );
+                                  await _loadUnreadCount();
+                                }
                               },
                             ),
                           ],

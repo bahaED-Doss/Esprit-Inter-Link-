@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../widgets/zoomable_image.dart';
 import 'notification_page.dart';
 import '../todo/saved_candidates_page.dart';
+import '../../data/notification_service.dart';
 
 class HRHomePage extends StatelessWidget {
-  const HRHomePage({Key? key}) : super(key: key);
+  final int userId;
+  const HRHomePage({Key? key, required this.userId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -15,10 +17,11 @@ class HRHomePage extends StatelessWidget {
       icons: [
         'assets/icons/Home.png',
         'assets/icons/internship.png',
-        'assets/icons/middle.png', // Ajout de l'icône middle
+        'assets/icons/middle.png',
         'assets/icons/candidates.png',
         'assets/icons/Save.png',
       ],
+      userId: userId,
     );
   }
 }
@@ -28,7 +31,8 @@ class _HomePageMock extends StatefulWidget {
   final String screenshot;
   final Color color;
   final List<String> icons;
-  const _HomePageMock({required this.title, required this.screenshot, required this.color, required this.icons});
+  final int userId;
+  const _HomePageMock({required this.title, required this.screenshot, required this.color, required this.icons, required this.userId});
 
   @override
   State<_HomePageMock> createState() => _HomePageMockState();
@@ -104,7 +108,7 @@ class _HomePageMockState extends State<_HomePageMock> {
                               child: Container(
                                 height: 36,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
+                                  color: Colors.white.withAlpha((0.15 * 255).round()),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -125,7 +129,7 @@ class _HomePageMockState extends State<_HomePageMock> {
                               onPressed: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => const NotificationPage()),
+                                  MaterialPageRoute(builder: (_) => NotificationPage(userId: widget.userId)),
                                 );
                               },
                             ),

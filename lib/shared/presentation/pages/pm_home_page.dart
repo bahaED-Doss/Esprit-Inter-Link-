@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/zoomable_image.dart';
 import 'notification_page.dart';
 import '../../../features/tasks/presentation/pages/project_selector_page.dart';
+import '../../data/notification_service.dart';
 
 class PMHomePage extends StatelessWidget {
   const PMHomePage({Key? key}) : super(key: key);
@@ -39,6 +40,32 @@ class _HomePageMockState extends State<_HomePageMock> {
   bool _taskClicked = false;
   bool _showPopover = false;
   int? _popoverSelectedIndex;
+  int _unreadCount = 0;
+  int? _pmId;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPMData();
+    _loadUnreadCount();
+  }
+
+  Future<void> _initPMData() async {
+    // À adapter selon la logique d'authentification réelle
+    // Ici, on suppose un PM de démonstration avec id 1
+    setState(() {
+      _pmId = 1;
+    });
+  }
+
+  Future<void> _loadUnreadCount() async {
+    if (_pmId != null) {
+      final count = await NotificationService.getUnreadCount(_pmId!);
+      setState(() {
+        _unreadCount = count;
+      });
+    }
+  }
 
   void _onLongPressStartMiddleButton(LongPressStartDetails details) {
     setState(() {
@@ -135,12 +162,46 @@ class _HomePageMockState extends State<_HomePageMock> {
                       ),
                       const SizedBox(width: 12),
                       IconButton(
-                        icon: const Icon(Icons.notifications_none, color: Colors.white),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const NotificationPage()),
-                          );
+                        icon: Stack(
+                          children: [
+                            const Icon(Icons.notifications_none, color: Colors.white),
+                            if (_unreadCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    '$_unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        onPressed: () async {
+                          if (_pmId != null) {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => NotificationPage(userId: _pmId!),
+                              ),
+                            );
+                            await _loadUnreadCount();
+                          }
                         },
                       ),
                     ],

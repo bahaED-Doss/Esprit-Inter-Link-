@@ -7,11 +7,14 @@ import '../../providers/task_provider.dart';
 import 'package:intl/intl.dart';
 import '../widgets/task_form_dialog.dart';
 import 'task_details_dialog.dart'; // + afficher les détails en vue Kanban pour les étudiants
+import '../../../../data/datasources/local/database_helper.dart';
+import '../../../../shared/data/notification_service.dart';
 
 class KanbanBoard extends StatefulWidget {
   final bool isPM;
+  final int userId; // Ajout de l'id utilisateur courant
 
-  const KanbanBoard({Key? key, this.isPM = false}) : super(key: key);
+  const KanbanBoard({Key? key, this.isPM = false, required this.userId}) : super(key: key);
 
   @override
   State<KanbanBoard> createState() => _KanbanBoardState();
@@ -58,7 +61,7 @@ class _KanbanBoardState extends State<KanbanBoard> {
           onWillAcceptWithDetails: (details) => details.data.status != status,
           onAcceptWithDetails: (details) async {
             final incoming = details.data;
-            // If current user is PM (not student), don't persist the change — show a message and return
+            final previousStatus = incoming.status;
             if (widget.isPM) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -66,15 +69,36 @@ class _KanbanBoardState extends State<KanbanBoard> {
                   duration: Duration(seconds: 2),
                 ),
               );
-              return; // no provider.editTask -> card will snap back
+              return;
             }
-
-            // Otherwise (student), perform the status update
             final updated = incoming.copyWith(status: status);
             await provider.editTask(updated);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Moved "${incoming.title}" to $statusName')),
             );
+            // Vérification du rôle avant notification PM
+            final currentUser = await DatabaseHelper.getUserById(widget.userId);
+            if (currentUser != null && currentUser['role'] == 'STUDENT') {
+              if (previousStatus == TaskStatus.TO_DO && (status == TaskStatus.DOING || status == TaskStatus.DONE)) {
+                final openTasks = await DatabaseHelper.countOpenTasksForProject(incoming.projectId);
+                if (openTasks == 0) {
+                  final pmId = await DatabaseHelper.getPMUserIdForProject(incoming.projectId);
+                  if (pmId != null) {
+                    final alreadyNotified = await DatabaseHelper.hasUnreadEmptyProjectNotification(pmId, incoming.projectId);
+                    if (!alreadyNotified) {
+                      final project = await DatabaseHelper.getProjectById(incoming.projectId);
+                      await NotificationService.addNotificationForUser(
+                        pmId,
+                        'Le projet ${project?['name'] ?? ''} n’a plus de tâches à faire, voulez-vous en ajouter ou terminer le projet ?',
+                        title: 'Projet sans tâches',
+                        type: 'PROJECT',
+                        referenceId: incoming.projectId,
+                      );
+                    }
+                  }
+                }
+              }
+            }
           },
           builder: (context, candidateData, rejectedData) {
             return Padding(
