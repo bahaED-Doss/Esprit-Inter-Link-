@@ -98,7 +98,7 @@ class _HomePageMockState extends State<_HomePageMock> {
                         color: widget.color,
                         child: Row(
                           children: [
-                            CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/images/avatar.png')),
+                            CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/icons/avatar.png')),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Container(

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../widgets/zoomable_image.dart';
 import 'notification_page.dart';
 import '../todo/saved_offers_page.dart';
+import '../../../features/ats/ats_page.dart';
+import '../../../features/tasks/presentation/pages/student_task_view.dart';
+import '../../../data/datasources/local/database_helper.dart';
 
 class StudentHomePage extends StatefulWidget {
   const StudentHomePage({Key? key}) : super(key: key);
@@ -26,10 +29,47 @@ class _StudentHomePageState extends State<StudentHomePage> {
     'assets/icons/Home.png',
     'assets/icons/internshipD.png',
     'assets/icons/middle.png',
-    'assets/icons/quiz.png',
+    'assets/icons/cv.png',
     'assets/icons/Save.png',
   ];
   List<String> savedOffers = [];
+
+  // Nouveau: informations sur l'étudiant et le projet assigné
+  final String _studentEmail = 'student@esprit.tn'; // assumption: demo student
+  int? _studentId;
+  int? _assignedProjectId;
+  String? _assignedProjectName;
+
+  @override
+  void initState() {
+    super.initState();
+    _initStudentData();
+  }
+
+  Future<void> _initStudentData() async {
+    // Ensure mock projects exist
+    await DatabaseHelper.initializeMockProjectsIfNeeded();
+
+    // Récupérer l'utilisateur demo
+    final db = await DatabaseHelper.database;
+    final users = await db.query('users', where: 'email = ?', whereArgs: [_studentEmail], limit: 1);
+    if (users.isNotEmpty) {
+      final u = users.first;
+      setState(() {
+        _studentId = u['id'] as int?;
+        hasInternship = (u['internship_status'] as String?) == 'INTERN';
+      });
+    }
+
+    // Récupérer le projet assigné à cet email (s'il existe)
+    final project = await DatabaseHelper.getProjectAssignedToStudent(_studentEmail);
+    if (project != null) {
+      setState(() {
+        _assignedProjectId = project['id'] as int?;
+        _assignedProjectName = project['name'] as String?;
+      });
+    }
+  }
 
   void _onLongPressStartMiddleButton(LongPressStartDetails details) {
     setState(() {
@@ -90,18 +130,40 @@ class _StudentHomePageState extends State<StudentHomePage> {
       });
     } else if (index == 2) {
       // Trophies
-      // Naviguer vers la page des trophées (à implémenter)
       Navigator.pushNamed(context, '/trophies');
       setState(() {
         showPopover = false;
       });
-    } else if (index == 0 || index == 1) {
-      // Project/Tasks
-      setState(() {
-        isFloating = true;
-        showPopover = true;
-        floatingMessage = null;
-      });
+    } else if (index == 0) {
+      // Project (si l'étudiant a un stage)
+      if (hasInternship) {
+        // Naviguer vers la page projet (si besoin) - pour l'instant on ferme simplement
+        setState(() {
+          showPopover = false;
+        });
+      }
+    } else if (index == 1) {
+      // Tasks (si l'étudiant a un stage)
+      if (hasInternship && _assignedProjectId != null && _studentId != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StudentTaskView(
+              projectId: _assignedProjectId!,
+              userId: _studentId!,
+              projectName: _assignedProjectName ?? 'Project',
+            ),
+          ),
+        );
+        setState(() {
+          showPopover = false;
+        });
+      } else {
+        // Aucun projet assigné ou pas encore d'internship
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No assigned project or internship not confirmed yet')),
+        );
+      }
     }
   }
 
@@ -140,7 +202,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
                         color: const Color(0xFF821E23),
                         child: Row(
                           children: [
-                            CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/images/avatar.png')),
+                            CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/icons/avatar.png')),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Container(
@@ -183,7 +245,42 @@ class _StudentHomePageState extends State<StudentHomePage> {
                           Checkbox(
                             value: hasInternship,
                             activeColor: const Color(0xFF8B1C1C),
-                            onChanged: (v) => setState(() => hasInternship = v ?? false),
+                            onChanged: (v) async {
+                              final newVal = v ?? false;
+                              setState(() => hasInternship = newVal);
+
+                              // Persister le statut dans la DB
+                              await DatabaseHelper.updateStudentInternshipStatus(_studentEmail, newVal ? 'INTERN' : 'CANDIDATE');
+
+                              if (newVal) {
+                                // Devenir intern -> assigner automatiquement le premier projet disponible
+                                final assignedId = await DatabaseHelper.assignFirstAvailableProjectToStudent(_studentEmail);
+                                if (assignedId != null) {
+                                  final proj = await DatabaseHelper.getProjectAssignedToStudent(_studentEmail);
+                                  setState(() {
+                                    _assignedProjectId = proj?['id'] as int?;
+                                    _assignedProjectName = proj?['name'] as String?;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Assigned to project #$assignedId: ${_assignedProjectName ?? ''}')),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('No available project to assign')),
+                                  );
+                                }
+                              } else {
+                                // Revenir candidat -> désassigner les projets du student
+                                final count = await DatabaseHelper.unassignProjectsFromStudent(_studentEmail);
+                                setState(() {
+                                  _assignedProjectId = null;
+                                  _assignedProjectName = null;
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Unassigned $count project(s) from student')),
+                                );
+                              }
+                            },
                           ),
                           const Text(
                             'Student has internship',
@@ -301,9 +398,12 @@ class _StudentHomePageState extends State<StudentHomePage> {
                                       setState(() {
                                         _selectedIndex = i;
                                         if (i == 3) {
-                                          _quizClicked = !_quizClicked;
-                                        }
-                                        if (i == 1) {
+                                          // Navigation vers AtsPage (Upload CV)
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => const AtsPage()),
+                                          );
+                                        } else if (i == 1) {
                                           _candidatesClicked = !_candidatesClicked;
                                         }
                                       });
@@ -316,7 +416,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
                                       padding: const EdgeInsets.all(12),
                                       child: Image.asset(
                                         i == 3
-                                            ? (_quizClicked ? 'assets/icons/quizR.png' : icons[3])
+                                            ? (_quizClicked ? 'assets/icons/cv.png' : icons[3])
                                             : i == 1
                                                 ? (_candidatesClicked ? 'assets/icons/internship.png' : icons[1])
                                                 : i == 4

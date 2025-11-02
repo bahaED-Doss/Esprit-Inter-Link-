@@ -10,7 +10,7 @@ Esprit-InterLink connecte entreprises, chefs de projet et étudiants pour la ges
 - **HR** : Publie des offres, gère les candidatures, crée des comptes PM
 - **PM** : Gère les projets, crée des tâches, suit l’avancement
 - **Étudiants** : Parcourent les offres, postulent, réalisent les tâches via Kanban
-
+[assets](assets)
 ---
 
 ## 🚀 Installation rapide
@@ -162,13 +162,15 @@ await TrophyService.unlockTrophy(context, AchievementType.studentProfilePioneer)
 ```dart
 await TrophyService.unlockTrophy(context, AchievementType.studentWelcomeAboard);
 ```
-À placer quand le HR accepte la candidature d’un étudiant (statut accepté).
+À placer quand le HR accepte la candidature d'un étudiant (statut accepté).
 
 - **Task Warrior** (5 tâches complétées)
 ```dart
+// Déjà implémenté dans StudentTaskView - se déclenche automatiquement
+// quand l'étudiant complète sa 5ème tâche (status = DONE)
 await TrophyService.unlockTrophy(context, AchievementType.studentTaskWarrior);
 ```
-À placer après la validation de la 5ème tâche par l’étudiant.
+**NOTE IMPORTANTE** : Ce trophée est automatiquement vérifié dans `lib/features/tasks/presentation/pages/student_task_view.dart` à la ligne ~95. Quand un étudiant change le statut d'une tâche à DONE, le système vérifie le nombre total de tâches complétées et débloque le trophée si ≥ 5.
 
 - **Rising Star** (Feedback exceptionnel)
 ```dart
@@ -258,27 +260,84 @@ Après la création du 3ème projet.
 
 - **Task Master**
 ```dart
-await TrophyService.unlockTrophy(context, AchievementType.pmTaskMaster);
+// À ajouter dans lib/features/tasks/presentation/pages/pm_task_view.dart
+// Dans la méthode addTask du provider, après l'insertion réussie
+final taskCount = await _db.getAllTasks().length;
+if (taskCount == 1) {
+  await TrophyService.unlockTrophy(context, AchievementType.pmTaskMaster);
+}
 ```
-Après la création de la première tâche.
+**NOTE IMPORTANTE** : À ajouter après la création de la première tâche. Le PM doit déclencher ce trophée dans le callback `onSave` du `TaskFormDialog` quand `provider.addTask()` est appelé pour la première fois.
 
 - **Delegation Expert**
 ```dart
-await TrophyService.unlockTrophy(context, AchievementType.pmDelegationExpert);
+// À ajouter dans lib/features/tasks/presentation/pages/pm_task_view.dart
+// Dans la méthode addTask du provider, après l'insertion réussie
+final taskCount = await _db.getAllTasks().length;
+if (taskCount == 5) {
+  await TrophyService.unlockTrophy(context, AchievementType.pmDelegationExpert);
+}
 ```
-Après la création de la 5ème tâche.
+**NOTE IMPORTANTE** : Se déclenche après la création de la 5ème tâche.
 
 - **Project Finisher**
 ```dart
 await TrophyService.unlockTrophy(context, AchievementType.pmProjectFinisher);
 ```
-Après avoir terminé le premier projet (statut terminé).
+**À IMPLÉMENTER PAR L'ÉQUIPE PROJECT** : Après avoir terminé le premier projet (changement de statut du projet à "COMPLETED" ou "FINISHED").
 
 - **Project Legend**
 ```dart
 await TrophyService.unlockTrophy(context, AchievementType.pmProjectLegend);
 ```
-Après avoir terminé 3 projets (statut terminé).
+**À IMPLÉMENTER PAR L'ÉQUIPE PROJECT** : Après avoir terminé 3 projets (statut terminé).
+
+---
+
+## 📋 Module Tasks - Instructions d'intégration
+
+### Pour l'équipe travaillant sur le module Projects :
+
+1. **Remplacer le mock ProjectModel** :
+   - Fichier : `lib/features/tasks/models/project_model.dart`
+   - Remplacer par votre vrai modèle de projet
+
+2. **Intégrer la récupération des projets** :
+   - Dans `lib/features/tasks/presentation/pages/project_selector_page.dart`
+   - Remplacer la méthode `_getMockProjects()` par un appel à votre service/repository
+   - Exemple : `final projects = await ProjectRepository().getProjectsByPM(pmId);`
+
+3. **Déclencher les trophées Project Finisher et Project Legend** :
+   - Quand un PM marque un projet comme "terminé"
+   - Vérifier le nombre total de projets terminés
+   - Si c'est le 1er : débloquer `pmProjectFinisher`
+   - Si c'est le 3ème : débloquer `pmProjectLegend`
+
+### Base de données locale (SQLite) :
+
+Le module Tasks utilise sa propre base de données SQLite (`tasks.db`) avec la table suivante :
+
+```sql
+CREATE TABLE tasks(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT,
+  taskNumber TEXT,
+  status TEXT CHECK(status IN ('TO_DO','DOING','DONE')),
+  priority TEXT CHECK(priority IN ('High','Medium','Low')),
+  deadline TEXT,
+  sprintNumber INTEGER,
+  projectId INTEGER NOT NULL,  -- Clé étrangère vers votre projet
+  assignedTo INTEGER,           -- ID de l'étudiant assigné
+  createdAt TEXT,
+  updatedAt TEXT
+)
+```
+
+### Navigation :
+
+- **PM** : Clic sur icône Tasks → Sélection de projet → Gestion des tâches
+- **Student** : Clic sur icône Tasks → Vue directe des tâches assignées
 
 ---
 

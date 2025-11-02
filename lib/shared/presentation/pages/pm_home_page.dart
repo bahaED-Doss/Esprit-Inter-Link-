@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/zoomable_image.dart';
 import 'notification_page.dart';
+import '../../../features/tasks/presentation/pages/project_selector_page.dart';
 
 class PMHomePage extends StatelessWidget {
   const PMHomePage({Key? key}) : super(key: key);
@@ -94,13 +95,30 @@ class _HomePageMockState extends State<_HomePageMock> {
                   color: widget.color,
                   child: Row(
                     children: [
-                      CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/images/avatar.png')),
+                      // avatar.png se trouve dans assets/icons/. Utilise Image.asset avec errorBuilder
+                      // pour fournir un fallback si le fichier ne se charge pas.
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white.withAlpha((0.08 * 255).round()),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/icons/avatar.png',
+                            width: 36,
+                            height: 36,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Fallback vers userIcon.png (présent dans assets/icons/)
+                              return Image.asset('assets/icons/userIcon.png', width: 36, height: 36, fit: BoxFit.cover);
+                            },
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Container(
                           height: 36,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
+                            color: Colors.white.withAlpha((0.15 * 255).round()),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -170,6 +188,13 @@ class _HomePageMockState extends State<_HomePageMock> {
                 _selectedIndex = index;
                 if (index == 3) {
                   _taskClicked = !_taskClicked;
+                  // Navigation vers la page de sélection de projet pour PM
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProjectSelectorPage(pmId: 1), // Mock PM ID
+                    ),
+                  );
                 }
               });
             },
@@ -179,8 +204,8 @@ class _HomePageMockState extends State<_HomePageMock> {
                 label: 'Home',
               ),
               BottomNavigationBarItem(
-                icon: Image.asset('assets/icons/project.png', width: 28),
-                label: 'Project',
+                icon: Image.asset('assets/icons/project.png', width: 28, color: Colors.grey[400]),
+                label: 'Projects',
               ),
               BottomNavigationBarItem(
                 icon: GestureDetector(
@@ -212,7 +237,7 @@ class _HomePageMockState extends State<_HomePageMock> {
                 });
               },
               child: Container(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withAlpha((0.4 * 255).round()),
                 width: double.infinity,
                 height: double.infinity,
               ),
