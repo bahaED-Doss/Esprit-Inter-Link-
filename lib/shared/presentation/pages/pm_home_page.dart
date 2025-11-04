@@ -1,0 +1,342 @@
+import 'package:flutter/material.dart';
+import '../widgets/zoomable_image.dart';
+import 'notification_page.dart';
+import '../../../features/tasks/presentation/pages/project_selector_page.dart';
+import '../../data/notification_service.dart';
+
+class PMHomePage extends StatelessWidget {
+  const PMHomePage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return _HomePageMock(
+      title: 'PM Home',
+      screenshot: 'assets/images/Screenshot.png',
+      color: const Color(0xFF821E23),
+      icons: [
+        'assets/icons/Home.png',
+        'assets/icons/project.png',
+        'assets/icons/middle.png', // Ajout de l'icône middle
+        'assets/icons/task.png',
+        'assets/icons/interns.png',
+      ],
+    );
+  }
+}
+
+class _HomePageMock extends StatefulWidget {
+  final String title;
+  final String screenshot;
+  final Color color;
+  final List<String> icons;
+  const _HomePageMock({required this.title, required this.screenshot, required this.color, required this.icons});
+
+  @override
+  State<_HomePageMock> createState() => _HomePageMockState();
+}
+
+class _HomePageMockState extends State<_HomePageMock> {
+  int _selectedIndex = 0;
+  bool _taskClicked = false;
+  bool _showPopover = false;
+  int? _popoverSelectedIndex;
+  int _unreadCount = 0;
+  int? _pmId;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPMData();
+    _loadUnreadCount();
+  }
+
+  Future<void> _initPMData() async {
+    // À adapter selon la logique d'authentification réelle
+    // Ici, on suppose un PM de démonstration avec id 1
+    setState(() {
+      _pmId = 1;
+    });
+  }
+
+  Future<void> _loadUnreadCount() async {
+    if (_pmId != null) {
+      final count = await NotificationService.getUnreadCount(_pmId!);
+      setState(() {
+        _unreadCount = count;
+      });
+    }
+  }
+
+  void _onLongPressStartMiddleButton(LongPressStartDetails details) {
+    setState(() {
+      _showPopover = true;
+      _popoverSelectedIndex = null;
+    });
+  }
+
+  void _onLongPressMoveUpdateMiddleButton(LongPressMoveUpdateDetails details, BuildContext context) {
+    final RenderBox box = context.findRenderObject() as RenderBox;
+    final Offset localOffset = box.globalToLocal(details.globalPosition);
+    final double popoverWidth = 80;
+    final double popoverHeight = 80;
+    final Size screenSize = MediaQuery.of(context).size;
+    final double popoverLeft = (screenSize.width - popoverWidth) / 2;
+    final double popoverTop = screenSize.height - 70 - popoverHeight;
+    if (localOffset.dy > popoverTop && localOffset.dy < popoverTop + popoverHeight) {
+      double x = localOffset.dx - popoverLeft;
+      int idx = (x / (popoverWidth / 1)).floor();
+      if (idx < 0) idx = 0;
+      if (idx > 0) idx = 0;
+      setState(() {
+        _popoverSelectedIndex = idx;
+      });
+    } else {
+      setState(() {
+        _popoverSelectedIndex = null;
+      });
+    }
+  }
+
+  void _onLongPressEndMiddleButton(LongPressEndDetails details) {
+    if (_popoverSelectedIndex == 0) {
+      Navigator.pushNamed(context, '/trophies_pm');
+    }
+    setState(() {
+      _showPopover = false;
+      _popoverSelectedIndex = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFFF5F5F5),
+          body: Column(
+            children: [
+              SafeArea(
+                top: true,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  color: widget.color,
+                  child: Row(
+                    children: [
+                      // avatar.png se trouve dans assets/icons/. Utilise Image.asset avec errorBuilder
+                      // pour fournir un fallback si le fichier ne se charge pas.
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white.withAlpha((0.08 * 255).round()),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/icons/avatar.png',
+                            width: 36,
+                            height: 36,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Fallback vers userIcon.png (présent dans assets/icons/)
+                              return Image.asset('assets/icons/userIcon.png', width: 36, height: 36, fit: BoxFit.cover);
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha((0.15 * 255).round()),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 12),
+                              const Icon(Icons.search, color: Colors.white70, size: 20),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text('Search', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton(
+                        icon: Stack(
+                          children: [
+                            const Icon(Icons.notifications_none, color: Colors.white),
+                            if (_unreadCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    '$_unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        onPressed: () async {
+                          if (_pmId != null) {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => NotificationPage(userId: _pmId!),
+                              ),
+                            );
+                            await _loadUnreadCount();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        "Hey Wyvern team , this home page\nwill be filled later like this :",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: Color(0xFF1A1A2E)),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: 180,
+                        height: 120,
+                        child: ZoomableImage(imagePath: 'assets/images/Screenshot.png'),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B1C1C),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () {
+                          Navigator.pushNamedAndRemoveUntil(context, '/role_select', (route) => false);
+                        },
+                        child: const Text('Back to Select User'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: (index) {
+              setState(() {
+                _selectedIndex = index;
+                if (index == 3) {
+                  _taskClicked = !_taskClicked;
+                  // Navigation vers la page de sélection de projet pour PM
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProjectSelectorPage(pmId: 1), // Mock PM ID
+                    ),
+                  );
+                }
+              });
+            },
+            items: [
+              BottomNavigationBarItem(
+                icon: Image.asset('assets/icons/Home.png', width: 28),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Image.asset('assets/icons/project.png', width: 28, color: Colors.grey[400]),
+                label: 'Projects',
+              ),
+              BottomNavigationBarItem(
+                icon: GestureDetector(
+                  onLongPressStart: _onLongPressStartMiddleButton,
+                  onLongPressMoveUpdate: (details) => _onLongPressMoveUpdateMiddleButton(details, context),
+                  onLongPressEnd: _onLongPressEndMiddleButton,
+                  child: Image.asset('assets/icons/middle.png', width: 36),
+                ),
+                label: 'Trophies',
+              ),
+              BottomNavigationBarItem(
+                icon: Image.asset(_taskClicked ? 'assets/icons/task.png' : 'assets/icons/task.png', width: 28),
+                label: 'Task',
+              ),
+              BottomNavigationBarItem(
+                icon: Image.asset('assets/icons/interns.png', width: 28),
+                label: 'Interns',
+              ),
+            ],
+          ),
+        ),
+        if (_showPopover)
+          ...[
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showPopover = false;
+                  _popoverSelectedIndex = null;
+                });
+              },
+              child: Container(
+                color: Colors.black.withAlpha((0.4 * 255).round()),
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+            Positioned(
+              bottom: 70,
+              left: MediaQuery.of(context).size.width / 2 - 40,
+              child: Material(
+                color: Colors.transparent,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pushNamed(context, '/trophies_pm');
+                    setState(() {
+                      _showPopover = false;
+                      _popoverSelectedIndex = null;
+                    });
+                  },
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B1C1C),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset('assets/icons/trophy.png', width: 36, color: Colors.white),
+                        const SizedBox(height: 4),
+                        const Text('Trophies', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+      ],
+    );
+  }
+}
