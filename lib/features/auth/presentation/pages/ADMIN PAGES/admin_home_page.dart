@@ -4,7 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:esprit_interlink/features/auth/providers/auth_provider.dart';
 import 'package:esprit_interlink/features/auth/presentation/models/user_model.dart';
 
-// Assurez-vous que ces imports pointent vers les bons fichiers
+// 🚀 NOUVEAUX IMPORTS
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:convert'; // Pour jsonEncode
+
+// Imports des widgets locaux
 import 'admin_stats_view.dart';
 import 'admin_user_list_view.dart';
 
@@ -24,14 +28,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Charger les données initiales
       _loadData();
     });
   }
 
-  // 🚀 NOUVELLE MÉTHODE DE RECHARGEMENT
   Future<void> _loadData() async {
-    // Utiliser context.read dans une méthode
     await context.read<AuthProvider>().fetchAllUsersAndStats();
   }
 
@@ -51,65 +52,107 @@ class _AdminHomePageState extends State<AdminHomePage> {
     });
   }
 
-  // 🚀 NOUVELLE MÉTHODE POUR NAVIGUER ET ATTENDRE LE RÉSULTAT
   void _navigateAndRefresh(User? user) async {
-    // Naviguer vers la page de formulaire et attendre un résultat (bool)
     final result = await context.pushNamed<bool>(
         'admin_user_form',
         extra: user
     );
-
-    // Si la page de formulaire est revenue avec 'true' (succès), rafraîchir les données
     if (result == true) {
       _loadData();
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        backgroundColor: const Color(0xFF8B1C1C),
-        foregroundColor: Colors.white,
+  // 🚀 NOUVELLE MÉTHODE : Afficher le QR Code
+  void _showUserQrCode(BuildContext context, List<User> users) {
+    // 1. Sérialiser la liste d'utilisateurs en JSON (en utilisant la méthode sécurisée)
+    final List<Map<String, dynamic>> userListForQr = users.map((user) => user.toJsonForQr()).toList();
+    final String jsonData = jsonEncode(userListForQr);
+
+    // 2. Afficher le dialogue
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('All Users QR Code'),
+        content: SizedBox(
+          width: 300,
+          height: 300,
+          child: QrImageView(
+            data: jsonData,
+            version: QrVersions.auto, // Laisse le package décider de la taille
+            size: 280.0,
+            gapless: false, // Laisse un petit bord blanc
+            eyeStyle: const QrEyeStyle(
+              eyeShape: QrEyeShape.square,
+              color: Color(0xFF8B1C1C), // Couleur principale
+            ),
+            dataModuleStyle: const QrDataModuleStyle(
+              dataModuleShape: QrDataModuleShape.circle,
+              color: Colors.black,
+            ),
+          ),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logOut,
-          ),
-          // 🚀 AJOUT D'UN BOUTON REFRESH MANUEL
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          )
         ],
       ),
-      backgroundColor: Colors.grey[100],
-      body: Consumer<AuthProvider>(
-        builder: (context, auth, child) {
-          if (auth.isLoading && auth.allUsers.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 🚀 Utiliser Consumer pour envelopper tout le Scaffold
+    // Cela donne accès à 'auth' dans l'AppBar ET le body
+    return Consumer<AuthProvider>(
+      builder: (context, auth, child) {
+
+        // Tri des utilisateurs
+        final users = List<User>.from(auth.allUsers);
+        users.sort((a, b) {
+          int comparison;
+          switch (_sortColumn) {
+            case 'email':
+              comparison = a.email.compareTo(b.email);
+              break;
+            case 'role':
+              comparison = a.role.compareTo(b.role);
+              break;
+            case 'fullName':
+            default:
+              comparison = (a.fullName ?? '').compareTo(b.fullName ?? '');
           }
+          return _sortAscending ? comparison : -comparison;
+        });
 
-          // Tri des utilisateurs
-          final users = List<User>.from(auth.allUsers);
-          users.sort((a, b) {
-            int comparison;
-            switch (_sortColumn) {
-              case 'email':
-                comparison = a.email.compareTo(b.email);
-                break;
-              case 'role':
-                comparison = a.role.compareTo(b.role);
-                break;
-              case 'fullName':
-              default:
-                comparison = (a.fullName ?? '').compareTo(b.fullName ?? '');
-            }
-            return _sortAscending ? comparison : -comparison;
-          });
-
-          return RefreshIndicator(
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Admin Dashboard'),
+            backgroundColor: const Color(0xFF8B1C1C),
+            foregroundColor: Colors.white,
+            actions: [
+              // 🚀 NOUVEAU BOUTON QR CODE
+              IconButton(
+                icon: const Icon(Icons.qr_code_2),
+                tooltip: 'Show All Users QR Code',
+                onPressed: () {
+                  // Passer la liste des utilisateurs (non triée ou triée, peu importe)
+                  _showUserQrCode(context, auth.allUsers);
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _loadData,
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: _logOut,
+              ),
+            ],
+          ),
+          backgroundColor: Colors.grey[100],
+          body: RefreshIndicator(
             onRefresh: _loadData, // Utiliser la méthode locale
             child: ListView(
               padding: const EdgeInsets.all(16),
@@ -150,24 +193,22 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // 🚀 Passer la fonction de navigation à la liste
                 AdminUserListView(
-                  users: users,
+                  users: users, // Utiliser la liste triée
                   onEditUser: (user) => _navigateAndRefresh(user),
                 ),
               ],
             ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // 🚀 Appeler la nouvelle fonction de navigation
-          _navigateAndRefresh(null);
-        },
-        backgroundColor: const Color(0xFF8B1C1C),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              _navigateAndRefresh(null);
+            },
+            backgroundColor: const Color(0xFF8B1C1C),
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        );
+      },
     );
   }
 }

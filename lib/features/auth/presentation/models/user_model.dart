@@ -92,4 +92,13 @@ class User {
       resumeSize: resumeSize ?? this.resumeSize,
     );
   }
+  Map<String, dynamic> toJsonForQr() {
+    return {
+      'id': id,
+      'email': email,
+      'fullName': fullName,
+      'phone': phone,
+      'role': role,
+    };
+  }
 }

@@ -467,29 +467,44 @@ class AuthRepository {
     required String newPassword,
   }) async {
     try {
+      print('🔐 Reset password with token: $token');
+
+      // 1. Vérifier le token
       final resetRequest = await _databaseService.getPasswordReset(token);
       if (resetRequest == null) {
         throw Exception('Invalid reset token');
       }
-
       if (resetRequest.isUsed) {
         throw Exception('Reset token already used');
       }
-
       if (resetRequest.expiresAt.isBefore(DateTime.now())) {
         throw Exception('Reset token expired');
       }
 
+      print('✅ Token is valid for email: ${resetRequest.email}');
+
+      // 2. Hasher le nouveau mot de passe
       final hashedPassword = _hashPassword(newPassword);
-      await _databaseService.updateUserPassword(
+
+      // 3. Mettre à jour le mot de passe (ET VÉRIFIER LE RÉSULTAT)
+      final rowsAffected = await _databaseService.updateUserPassword(
         email: resetRequest.email,
         newPassword: hashedPassword,
       );
 
+      // 🚀 CORRECTION : Vérifier si la mise à jour a réellement eu lieu
+      if (rowsAffected == 0) {
+        throw Exception('Failed to update password in database (user not found or password unchanged)');
+      }
+
+      // 4. Marquer le token comme utilisé
       await _databaseService.markResetTokenAsUsed(token);
-      return true;
+
+      print('✅ Password updated successfully for: ${resetRequest.email}');
+      return true; //
     } catch (e) {
       print('❌ Reset password error: $e');
+      // Propage l'erreur au AuthProvider, qui la renverra à l'UI
       throw Exception('Password reset failed: $e');
     }
   }

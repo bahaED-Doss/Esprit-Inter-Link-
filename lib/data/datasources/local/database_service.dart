@@ -529,12 +529,13 @@ class DatabaseService {
     );
   }
 
-  Future<void> updateUserPassword({
+  Future<int> updateUserPassword({
     required String email,
     required String newPassword,
   }) async {
     final db = await database;
-    await db.update(
+    // 🚀 CORRECTION : 'return await'
+    return await db.update(
       'users',
       {'password': newPassword},
       where: 'email = ?',
