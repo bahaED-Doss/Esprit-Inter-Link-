@@ -310,132 +310,132 @@ class _HRInternshipFormPageState extends State<HRInternshipFormPage> {
               
               const SizedBox(height: 20),
               
-              // Type and Duration
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Type *',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+              // Type and Duration - Responsive Layout
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isSmallScreen = constraints.maxWidth < 400;
+
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: [
+                      SizedBox(
+                        width: isSmallScreen ? double.infinity : (constraints.maxWidth / 2) - 10,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Type *',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<InternshipType>(
+                              value: _selectedType,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.grey[300]!),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              ),
+                              items: InternshipType.values.map((type) {
+                                return DropdownMenuItem(
+                                  value: type,
+                                  child: Text(_getTypeDisplay(type)),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value != null) setState(() => _selectedType = value);
+                              },
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<InternshipType>(
-                          value: _selectedType,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                          ),
-                          items: InternshipType.values.map((type) {
-                            return DropdownMenuItem(
-                              value: type,
-                              child: Text(_getTypeDisplay(type)),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedType = value;
-                              });
-                            }
+                      ),
+                      SizedBox(
+                        width: isSmallScreen ? double.infinity : (constraints.maxWidth / 2) - 10,
+                        child: _buildTextField(
+                          controller: _durationController,
+                          label: 'Duration (months) *',
+                          hint: '3',
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return 'Required';
+                            if (int.tryParse(value) == null) return 'Invalid';
+                            return null;
                           },
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _durationController,
-                      label: 'Duration (months) *',
-                      hint: '3',
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Required';
-                        }
-                        if (int.tryParse(value) == null) {
-                          return 'Invalid';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
+                      ),
+                    ],
+                  );
+                },
               ),
-              
+
               const SizedBox(height: 20),
-              
-              // Status and Start Date
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Status *',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<InternshipStatus>(
-                          value: _selectedStatus,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
+
+              // Status and Start Date - Responsive Layout
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isSmallScreen = constraints.maxWidth < 400;
+
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: [
+                      SizedBox(
+                        width: isSmallScreen ? double.infinity : (constraints.maxWidth / 2) - 10,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Status *',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<InternshipStatus>(
+                              value: _selectedStatus,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.grey[300]!),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              ),
+                              items: InternshipStatus.values.map((status) {
+                                return DropdownMenuItem(
+                                  value: status,
+                                  child: Text(_getStatusDisplay(status)),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value != null) setState(() => _selectedStatus = value);
+                              },
                             ),
-                          ),
-                          items: InternshipStatus.values.map((status) {
-                            return DropdownMenuItem(
-                              value: status,
-                              child: Text(_getStatusDisplay(status)),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedStatus = value;
-                              });
-                            }
-                          },
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildDateField(
-                      label: 'Start Date *',
-                      date: _startDate,
-                      onTap: () => _selectDate(context),
-                    ),
-                  ),
-                ],
+                      ),
+                      SizedBox(
+                        width: isSmallScreen ? double.infinity : (constraints.maxWidth / 2) - 10,
+                        child: _buildDateField(
+                          label: 'Start Date *',
+                          date: _startDate,
+                          onTap: () => _selectDate(context),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               
               const SizedBox(height: 24),

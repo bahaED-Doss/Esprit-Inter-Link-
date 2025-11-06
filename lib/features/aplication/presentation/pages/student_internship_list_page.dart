@@ -156,14 +156,26 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'INTERNSHIPS',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.5,
-                ),
+              // Add a back button on the top-left
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      Navigator.maybePop(context);
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'INTERNSHIPS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
               ),
               Row(
                 children: [
@@ -189,7 +201,7 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
           // Barre de recherche
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withAlpha((0.2 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextField(
@@ -197,7 +209,7 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Search',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                hintStyle: TextStyle(color: Colors.white.withAlpha((0.7 * 255).round())),
                 prefixIcon: const Icon(Icons.search, color: Colors.white),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -232,7 +244,7 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withAlpha((0.05 * 255).round()),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -245,7 +257,7 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF8B1C1C).withOpacity(0.05),
+                color: const Color(0xFF8B1C1C).withAlpha((0.05 * 255).round()),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),

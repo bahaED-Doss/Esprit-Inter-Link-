@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../aplication/models/internship_model.dart';
 import '../../../aplication/providers/application_provider.dart';
 import 'hr_internship_form_page.dart';
+import '../../../aplication/presentation/pages/internship_details_page.dart';
 
 /// Page listant toutes les offres de stage créées par le HR avec CRUD
 class HRInternshipListPage extends StatefulWidget {
@@ -85,6 +86,19 @@ class _HRInternshipListPageState extends State<HRInternshipListPage> {
         builder: (context) => HRInternshipFormPage(hrId: widget.hrId),
       ),
     ).then((_) => _loadInternships());
+  }
+
+  // Ouvre la page de détails pour une offre (vue HR -> studentId = null)
+  void _openDetails(Internship internship) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InternshipDetailsPage(
+          internship: internship,
+          studentId: null,
+        ),
+      ),
+    );
   }
 
   @override
@@ -201,8 +215,9 @@ class _HRInternshipListPageState extends State<HRInternshipListPage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addInternship,
         backgroundColor: const Color(0xFF8B1C1C),
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: const Text('New Offer'),
+        label: const Text('New Offer', style: TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -230,14 +245,26 @@ class _HRInternshipListPageState extends State<HRInternshipListPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'MY INTERNSHIP OFFERS',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.5,
-                ),
+              // Back button + title
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      Navigator.maybePop(context);
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'MY INTERNSHIP OFFERS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
               ),
               IconButton(
                 icon: const Icon(Icons.filter_list, color: Colors.white, size: 22),
@@ -253,7 +280,7 @@ class _HRInternshipListPageState extends State<HRInternshipListPage> {
           // Barre de recherche
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withAlpha((0.2 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextField(
@@ -261,7 +288,7 @@ class _HRInternshipListPageState extends State<HRInternshipListPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Search',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                hintStyle: TextStyle(color: Colors.white.withAlpha((0.7 * 255).round())),
                 prefixIcon: const Icon(Icons.search, color: Colors.white),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -277,145 +304,171 @@ class _HRInternshipListPageState extends State<HRInternshipListPage> {
   }
 
   Widget _buildInternshipCard(Internship internship) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return InkWell(
+      onTap: () {
+        // Ouvre la page de détails (studentId n'est pas disponible ici, on passe null)
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InternshipDetailsPage(
+              internship: internship,
+              studentId: null,
+            ),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header avec status
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _getStatusColor(internship.status).withOpacity(0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha((0.05 * 255).round()),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header avec status
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _getStatusColor(internship.status).withAlpha((0.1 * 255).round()),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          internship.title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          internship.companyName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    // Make the status badge tappable and still keep its decoration
+                    decoration: BoxDecoration(
+                       color: _getStatusColor(internship.status),
+                       borderRadius: BorderRadius.circular(12),
+                     ),
+                    child: GestureDetector(
+                      onTap: () => _openDetails(internship),
+                      child: Text(
+                        internship.statusDisplay,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    internship.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Utiliser Wrap pour éviter l'overflow
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
                     children: [
-                      Text(
-                        internship.title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        internship.companyName,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
+                      _buildInfoChip(Icons.location_on, internship.location),
+                      _buildInfoChip(Icons.schedule, '${internship.duration} months'),
+                      _buildInfoChip(Icons.category, internship.typeDisplay),
                     ],
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(internship.status),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    internship.statusDisplay,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+
+                  const SizedBox(height: 16),
+
+                  // Action buttons: protéger avec scroll horizontal pour éviter overflow
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Color(0xFF8B1C1C)),
+                          onPressed: () => _editInternship(internship),
+                          tooltip: 'Edit',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteInternship(internship),
+                          tooltip: 'Delete',
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/hr_applications',
+                              arguments: internship.id,
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B1C1C),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.people, size: 18),
+                          label: const Text('Applications'),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  internship.description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                    height: 1.5,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                
-                const SizedBox(height: 12),
-                
-                Row(
-                  children: [
-                    _buildInfoChip(Icons.location_on, internship.location),
-                    const SizedBox(width: 12),
-                    _buildInfoChip(Icons.schedule, '${internship.duration} months'),
-                    const SizedBox(width: 12),
-                    _buildInfoChip(Icons.category, internship.typeDisplay),
-                  ],
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Action buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Color(0xFF8B1C1C)),
-                      onPressed: () => _editInternship(internship),
-                      tooltip: 'Edit',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteInternship(internship),
-                      tooltip: 'Delete',
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/hr_applications',
-                          arguments: internship.id,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF8B1C1C),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                      ),
-                      icon: const Icon(Icons.people, size: 18),
-                      label: const Text('Applications'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

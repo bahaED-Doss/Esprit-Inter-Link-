@@ -7,12 +7,13 @@ import 'application_form_page.dart';
 /// Page affichant les détails complets d'une offre de stage
 class InternshipDetailsPage extends StatefulWidget {
   final Internship internship;
-  final int studentId;
+  // studentId peut être null si la page est ouverte depuis le HR (visualisation seule)
+  final int? studentId;
 
   const InternshipDetailsPage({
     Key? key,
     required this.internship,
-    required this.studentId,
+    this.studentId,
   }) : super(key: key);
 
   @override
@@ -30,8 +31,19 @@ class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
   }
 
   Future<void> _checkApplicationStatus() async {
+    // Si aucun studentId fourni (ex: HR view), ne pas appeler hasApplied
+    if (widget.studentId == null) {
+      if (mounted) {
+        setState(() {
+          _hasApplied = false;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     final provider = Provider.of<ApplicationProvider>(context, listen: false);
-    final hasApplied = await provider.hasApplied(widget.studentId, widget.internship.id!);
+    final hasApplied = await provider.hasApplied(widget.studentId!, widget.internship.id!);
     if (mounted) {
       setState(() {
         _hasApplied = hasApplied;
@@ -128,7 +140,7 @@ class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF8B1C1C).withOpacity(0.1),
+                              color: Color(0xFF8B1C1C).withAlpha((0.1 * 255).round()),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -172,7 +184,8 @@ class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
       ),
       
       // Bouton Apply flottant
-      bottomNavigationBar: _isLoading
+      // Si on charge encore ou si aucun studentId n'est fourni (visualisation HR), ne rien afficher
+      bottomNavigationBar: (_isLoading || widget.studentId == null)
           ? null
           : Container(
               padding: const EdgeInsets.all(20),
@@ -180,7 +193,7 @@ class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withAlpha((0.05 * 255).round()),
                     blurRadius: 10,
                     offset: const Offset(0, -4),
                   ),
@@ -207,12 +220,13 @@ class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
                     )
                   : ElevatedButton(
                       onPressed: () {
+                        if (widget.studentId == null) return;
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ApplicationFormPage(
                               internship: widget.internship,
-                              studentId: widget.studentId,
+                              studentId: widget.studentId!,
                             ),
                           ),
                         ).then((_) {
@@ -286,7 +300,7 @@ class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((0.05 * 255).round()),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

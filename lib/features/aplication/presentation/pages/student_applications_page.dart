@@ -146,7 +146,7 @@ class _StudentApplicationsPageState extends State<StudentApplicationsPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Color(application.statusColor).withOpacity(0.1),
+              color: Color(application.statusColor).withAlpha((0.1 * 255).round()),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -218,11 +218,14 @@ class _StudentApplicationsPageState extends State<StudentApplicationsPage> {
                   children: [
                     Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
                     const SizedBox(width: 8),
-                    Text(
-                      '${_formatDate(application.startDate)} - ${_formatDate(application.endDate)}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[700],
+                    Expanded(
+                      child: Text(
+                        '${_formatDate(application.startDate)} - ${_formatDate(application.endDate)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[700],
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
