@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/zoomable_image.dart';
 import 'notification_page.dart';
-import '../../../features/tasks/presentation/pages/project_selector_page.dart';
+import '../../../features/projects/presentation/pages/project_selector_page.dart';
 import '../../data/notification_service.dart';
 
 class PMHomePage extends StatelessWidget {
@@ -249,13 +249,8 @@ class _HomePageMockState extends State<_HomePageMock> {
                 _selectedIndex = index;
                 if (index == 3) {
                   _taskClicked = !_taskClicked;
-                  // Navigation vers la page de sélection de projet pour PM
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProjectSelectorPage(pmId: 1), // Mock PM ID
-                    ),
-                  );
+                  // Navigate to the projects management page which also gives access to tasks
+                  Navigator.pushNamed(context, '/projects');
                 }
               });
             },

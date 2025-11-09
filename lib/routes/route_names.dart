@@ -16,6 +16,7 @@ class RouteNames {
   // PM
   static const pmDashboard = '/pm/dashboard';
   static const tasks = '/pm/tasks';
+  static const pmProjects = '/pm/projects';
 
   // Student
   static const offers = '/student/offers';

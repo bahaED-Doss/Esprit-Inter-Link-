@@ -1,8 +1,10 @@
 import 'package:esprit_interlink/shared/presentation/pages/role_select_screen.dart';
+import 'package:esprit_interlink/shared/presentation/todo/student_project_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:io' show Platform;
+import 'features/projects/presentation/pages/project_create_page.dart';
 import 'shared/presentation/pages/LoadingScreen.dart';
 import 'shared/presentation/pages/SplashScreen.dart';
 import 'shared/presentation/pages/student_home_page.dart';
@@ -23,6 +25,10 @@ import 'features/trophies/presentation/pages/student_trophies_page.dart';
 import 'features/trophies/presentation/pages/trophies_pm_page.dart';
 import 'features/trophies/presentation/pages/trophies_hr_page.dart';
 import 'data/datasources/local/database_helper.dart';
+import 'features/projects/presentation/pages/projects_page.dart';
+import 'package:provider/provider.dart';
+import 'features/projects/providers/project_provider.dart';
+import 'shared/providers/user_session_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,34 +80,42 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: const LoadingScreen(),
-      routes: {
-        '/splash': (context) => SplashScreen(
-              onNext: () {
-                Navigator.of(context).pushReplacementNamed('/role_select');
-              },
-            ),
-        '/role_select': (context) => RoleSelectScreen(),
-        '/student_home': (context) => const StudentHomePage(),
-        '/hr_home': (context) => const HRHomePage(userId: 3), // HR mock userId
-        '/pm_home': (context) => const PMHomePage(),
-        '/studentProfile': (context) => const StudentProfilePage(),
-        '/offers': (context) => const StudentOffersPage(),
-        '/myApplications': (context) => const StudentApplicationsPage(),
-        '/test': (context) => const StudentTestPage(),
-        '/applications': (context) => const HRApplicationsPage(),
-        '/candidates': (context) => const HRCandidatesPage(),
-        '/companyProfile': (context) => const HRProfileCompanyPage(),
-        '/pmProfile': (context) => const PMProfilePage(),
-        '/projects': (context) => const PMProjectsPage(),
-        '/interns': (context) => const PMInternsPage(),
-        '/tasks': (context) => const PMTasksPage(),
-        '/trophies': (context) => const StudentTrophiesPage(),
-        '/trophies_hr': (context) => const TrophiesHRPage(),
-        '/trophies_pm': (context) => const TrophiesPMPage(),
-      },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserSessionProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectProvider()),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: const LoadingScreen(),
+        routes: {
+          '/splash': (context) => SplashScreen(
+                onNext: () {
+                  Navigator.of(context).pushReplacementNamed('/role_select');
+                },
+              ),
+          '/role_select': (context) => RoleSelectScreen(),
+          '/student_home': (context) => const StudentHomePage(),
+          '/hr_home': (context) => const HRHomePage(userId: 3), // HR mock userId
+          '/pm_home': (context) => const PMHomePage(),
+          '/studentProfile': (context) => const StudentProfilePage(),
+          '/offers': (context) => const StudentOffersPage(),
+          '/student/project': (context) => const StudentProjectPage(),
+          '/myApplications': (context) => const StudentApplicationsPage(),
+          '/test': (context) => const StudentTestPage(),
+          '/applications': (context) => const HRApplicationsPage(),
+          '/candidates': (context) => const HRCandidatesPage(),
+          '/companyProfile': (context) => const HRProfileCompanyPage(),
+          '/pmProfile': (context) => const PMProfilePage(),
+          '/projects': (context) => const ProjectsPage(),
+          '/projects/create': (context) => const ProjectCreatePage(),
+          '/interns': (context) => const PMInternsPage(),
+          '/tasks': (context) => const PMTasksPage(),
+          '/trophies': (context) => const StudentTrophiesPage(),
+          '/trophies_hr': (context) => const TrophiesHRPage(),
+          '/trophies_pm': (context) => const TrophiesPMPage(),
+        },
+      ),
     );
   }
 }

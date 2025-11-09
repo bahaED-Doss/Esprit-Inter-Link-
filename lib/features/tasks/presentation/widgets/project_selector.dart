@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../models/project_model.dart';
+import '../../../projects/models/project_model.dart';
 
 /// Widget de sélection de projet pour PM
 /// Permet au PM de choisir quel projet gérer
 class ProjectSelector extends StatelessWidget {
-  final List<ProjectModel> projects;
-  final ProjectModel? selectedProject;
-  final Function(ProjectModel) onProjectSelected;
+  final List<Project> projects;
+  final Project? selectedProject;
+  final Function(Project) onProjectSelected;
   final bool compact; // Mode compact pour l'affichage en haut de page
 
   const ProjectSelector({

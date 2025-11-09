@@ -172,7 +172,8 @@ class HomePage extends StatelessWidget {
                 title: 'Projects',
                 subtitle: 'Manage projects',
                 color: AppColors.primary,
-                onTap: () => Navigator.pushNamed(context, '/pm/projects'),
+                // route available in main.dart is '/projects'
+                onTap: () => Navigator.pushNamed(context, '/projects'),
               ),
             ),
             const SizedBox(width: 12),
@@ -183,7 +184,8 @@ class HomePage extends StatelessWidget {
                 title: 'Create Task',
                 subtitle: 'Add new task',
                 color: Colors.orange,
-                onTap: () => Navigator.pushNamed(context, '/pm/create-task'),
+                // main.dart exposes '/tasks' which opens the PM tasks page
+                onTap: () => Navigator.pushNamed(context, '/tasks'),
               ),
             ),
           ],

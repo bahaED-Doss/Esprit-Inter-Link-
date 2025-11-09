@@ -14,33 +14,38 @@ class AppDrawer extends StatelessWidget {
         return [
           ListTile(
             title: const Text('Offers'),
-            onTap: () => Navigator.pushNamed(context, '/hr/offers'),
+            // main routes use '/offers' for the offers page
+            onTap: () => Navigator.pushNamed(context, '/offers'),
           ),
           ListTile(
             title: const Text('Applications'),
-            onTap: () => Navigator.pushNamed(context, '/hr/applications'),
+            onTap: () => Navigator.pushNamed(context, '/applications'),
           ),
         ];
       } else if (session.isPM) {
         return [
           ListTile(
             title: const Text('Projects'),
-            onTap: () => Navigator.pushNamed(context, '/pm/projects'),
+            onTap: () => Navigator.pushNamed(context, '/projects'),
           ),
           ListTile(
             title: const Text('Tasks'),
-            onTap: () => Navigator.pushNamed(context, '/pm/tasks'),
+            onTap: () => Navigator.pushNamed(context, '/tasks'),
           ),
         ];
       } else if (session.isStudent) {
         return [
           ListTile(
             title: const Text('Browse Offers'),
-            onTap: () => Navigator.pushNamed(context, '/student/offers'),
+            onTap: () => Navigator.pushNamed(context, '/offers'),
           ),
           ListTile(
             title: const Text('My Applications'),
-            onTap: () => Navigator.pushNamed(context, '/student/applications'),
+            onTap: () => Navigator.pushNamed(context, '/myApplications'),
+          ),
+          ListTile(
+            title: const Text('My Project'),
+            onTap: () => Navigator.pushNamed(context, '/student/project'),
           ),
         ];
       } else {

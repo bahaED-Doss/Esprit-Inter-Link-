@@ -39,7 +39,7 @@ class DatabaseHelper {
       dbPath,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
-      version: 4, // Bumped to 4 to add `pinned` column for tasks
+      version: 6, // bumped to 6 to introduce ON_HOLD status and additional project columns
     );
   }
 
@@ -58,15 +58,21 @@ class DatabaseHelper {
       );
     ''');
 
-    // Table projects
+    // Table projects (new schema includes ON_HOLD and extra columns)
     await db.execute('''
       CREATE TABLE projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
+        technologies_used TEXT,
         description TEXT,
         pm_id INTEGER NOT NULL,
-        assigned_to TEXT, -- email de l'étudiant assigné
-        status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'COMPLETED', 'ARCHIVED')),
+        assigned_to TEXT,
+        status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'COMPLETED', 'ARCHIVED', 'ON_HOLD')),
+        start_date TEXT,
+        end_date TEXT,
+        company_id INTEGER,
+        student_id INTEGER,
+        milestones TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         completed_at TEXT,
         FOREIGN KEY(pm_id) REFERENCES users(id)
@@ -170,6 +176,105 @@ class DatabaseHelper {
       }
     }
 
+    // Ajouter la colonne technologies_used dans projects si on migre depuis <5
+    if (oldVersion < 5) {
+      try {
+        await db.execute("ALTER TABLE projects ADD COLUMN technologies_used TEXT;");
+      } catch (_) {
+        // ignore si existe déjà
+      }
+    }
+
+    // NEW: migrate to version 6 schema (adds ON_HOLD and extra columns)
+    if (oldVersion < 6) {
+      try {
+        // Only perform a safe migration if a projects table exists
+        final tbl = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'");
+        if (tbl.isNotEmpty) {
+          // Rename old table
+          try {
+            await db.execute('ALTER TABLE projects RENAME TO projects_old;');
+          } catch (_) {}
+
+          // Create new projects table with updated schema
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS projects (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              technologies_used TEXT,
+              description TEXT,
+              pm_id INTEGER NOT NULL,
+              assigned_to TEXT,
+              status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'COMPLETED', 'ARCHIVED', 'ON_HOLD')),
+              start_date TEXT,
+              end_date TEXT,
+              company_id INTEGER,
+              student_id INTEGER,
+              milestones TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              completed_at TEXT,
+              FOREIGN KEY(pm_id) REFERENCES users(id)
+            );
+          ''');
+
+          // Copy existing columns that match
+          final oldInfo = await db.rawQuery("PRAGMA table_info('projects_old')");
+          final oldCols = oldInfo.map((r) => r['name'] as String).toList();
+          final newCols = [
+            'id',
+            'name',
+            'technologies_used',
+            'description',
+            'pm_id',
+            'assigned_to',
+            'status',
+            'start_date',
+            'end_date',
+            'company_id',
+            'student_id',
+            'milestones',
+            'created_at',
+            'completed_at'
+          ];
+
+          final colsToCopy = newCols.where((c) => oldCols.contains(c)).toList();
+          if (colsToCopy.isNotEmpty) {
+            final colsStr = colsToCopy.join(',');
+            await db.execute('INSERT INTO projects ($colsStr) SELECT $colsStr FROM projects_old;');
+          }
+
+          // Drop old table
+          try {
+            await db.execute('DROP TABLE IF EXISTS projects_old;');
+          } catch (_) {}
+        } else {
+          // No old projects table: ensure new exists
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS projects (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              technologies_used TEXT,
+              description TEXT,
+              pm_id INTEGER NOT NULL,
+              assigned_to TEXT,
+              status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'COMPLETED', 'ARCHIVED', 'ON_HOLD')),
+              start_date TEXT,
+              end_date TEXT,
+              company_id INTEGER,
+              student_id INTEGER,
+              milestones TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              completed_at TEXT,
+              FOREIGN KEY(pm_id) REFERENCES users(id)
+            );
+          ''');
+        }
+      } catch (e) {
+        // ignore migration errors but log
+        print('projects migration to v6 failed: $e');
+      }
+    }
+
     // S'assurer que la table notifications existe
     try {
       await db.execute('''
@@ -253,38 +358,157 @@ class DatabaseHelper {
     print('🏆 All trophies inserted successfully!');
   }
 
+  // Ensure core tables exist; used to repair older DBs that may miss tables
+  static Future<void> ensureSchemaExists(Database db) async {
+    try {
+      // users
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY,
+          email TEXT NOT NULL UNIQUE,
+          name TEXT,
+          role TEXT NOT NULL CHECK(role IN ('STUDENT', 'PM', 'HR')),
+          internship_status TEXT DEFAULT 'CANDIDATE' CHECK(internship_status IN ('CANDIDATE', 'INTERN', 'COMPLETED')),
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      ''');
+
+      // projects
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS projects (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          technologies_used TEXT,
+          description TEXT,
+          pm_id INTEGER NOT NULL,
+          assigned_to TEXT,
+          status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'COMPLETED', 'ARCHIVED', 'ON_HOLD')),
+          start_date TEXT,
+          end_date TEXT,
+          company_id INTEGER,
+          student_id INTEGER,
+          milestones TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          completed_at TEXT,
+          FOREIGN KEY(pm_id) REFERENCES users(id)
+        );
+      ''');
+
+      // Ensure column exists (for older DBs that have the table but not the column)
+      try {
+        await db.execute("ALTER TABLE projects ADD COLUMN technologies_used TEXT;");
+      } catch (_) {}
+
+      // ensure other potential columns exist
+      try { await db.execute("ALTER TABLE projects ADD COLUMN start_date TEXT;"); } catch (_) {}
+      try { await db.execute("ALTER TABLE projects ADD COLUMN end_date TEXT;"); } catch (_) {}
+      try { await db.execute("ALTER TABLE projects ADD COLUMN company_id INTEGER;"); } catch (_) {}
+      try { await db.execute("ALTER TABLE projects ADD COLUMN student_id INTEGER;"); } catch (_) {}
+      try { await db.execute("ALTER TABLE projects ADD COLUMN milestones TEXT;"); } catch (_) {}
+
+      // tasks
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          description TEXT,
+          taskNumber TEXT,
+          status TEXT CHECK(status IN ('TO_DO','DOING','DONE')) DEFAULT 'TO_DO',
+          priority TEXT CHECK(priority IN ('High','Medium','Low')) DEFAULT 'Medium',
+          deadline TEXT,
+          sprintNumber INTEGER,
+          projectId INTEGER NOT NULL,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          pinned INTEGER DEFAULT 0,
+          FOREIGN KEY(projectId) REFERENCES projects(id) ON DELETE CASCADE
+        );
+      ''');
+
+      // trophies
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS trophies (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          icon TEXT,
+          role TEXT NOT NULL CHECK(role IN ('STUDENT', 'PM', 'HR')),
+          xp INTEGER DEFAULT 0,
+          trigger_type TEXT NOT NULL,
+          trigger_value INTEGER,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      ''');
+
+      // user_trophies
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS user_trophies (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          trophy_id INTEGER NOT NULL,
+          unlocked_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          seen INTEGER DEFAULT 0,
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY(trophy_id) REFERENCES trophies(id) ON DELETE CASCADE
+        );
+      ''');
+
+      // notifications
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          message TEXT NOT NULL,
+          read INTEGER DEFAULT 0,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      ''');
+    } catch (e) {
+      // ignore: avoid_print
+      print('ensureSchemaExists failed: $e');
+    }
+  }
+
   // À appeler au démarrage de l'app pour insérer les projets mock si la table est vide
   static Future<void> initializeMockProjectsIfNeeded() async {
-    final db = await database;
-    final count = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM projects')
-    );
-    if (count == 0) {
-      await db.insert('projects', {
-        'id': 1,
-        'name': 'Mobile Application',
-        'description': 'Flutter internship management app',
-        'pm_id': 2,
-        'assigned_to': 'student@esprit.tn',
-        'status': 'ACTIVE'
-      });
-      await db.insert('projects', {
-        'id': 2,
-        'name': 'Web Dashboard',
-        'description': 'React admin panel for HR',
-        'pm_id': 2,
-        'assigned_to': 'student@esprit.tn',
-        'status': 'ACTIVE'
-      });
-      await db.insert('projects', {
-        'id': 3,
-        'name': 'Backend API',
-        'description': 'Spring Boot REST API',
-        'pm_id': 2,
-        'assigned_to': 'student@esprit.tn',
-        'status': 'ACTIVE'
-      });
-      print('📁 Mock projects inserted at app startup');
+    try {
+      final db = await database;
+      // Ensure core schema exists (in case we have a partial/old DB)
+      await ensureSchemaExists(db);
+
+      final count = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM projects')
+      );
+      if (count == 0) {
+        await db.insert('projects', {
+          'id': 1,
+          'name': 'Mobile Application',
+          'description': 'Flutter internship management app',
+          'pm_id': 2,
+          'assigned_to': 'student@esprit.tn',
+          'status': 'ACTIVE'
+        });
+        await db.insert('projects', {
+          'id': 2,
+          'name': 'Web Dashboard',
+          'description': 'React admin panel for HR',
+          'pm_id': 2,
+          'assigned_to': 'student@esprit.tn',
+          'status': 'ACTIVE'
+        });
+        await db.insert('projects', {
+          'id': 3,
+          'name': 'Backend API',
+          'description': 'Spring Boot REST API',
+          'pm_id': 2,
+          'assigned_to': 'student@esprit.tn',
+          'status': 'ACTIVE'
+        });
+        print('📁 Mock projects inserted at app startup');
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('initializeMockProjectsIfNeeded error: $e');
     }
   }
 

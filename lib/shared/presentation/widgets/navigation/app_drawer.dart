@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../providers/user_session_provider.dart';
 import '../../../models/user_role.dart';
+import '../../../../routes/route_names.dart';
 
 /// App Drawer - Shows different menu items based on user role
 class AppDrawer extends StatelessWidget {
@@ -128,7 +129,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Profile',
         onTap: () {
           context.pop();
-          // TODO: Navigate to profile
+          context.go(RouteNames.profile);
         },
       ),
       _buildMenuItem(
@@ -136,7 +137,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Settings',
         onTap: () {
           context.pop();
-          // TODO: Navigate to settings
+          context.go(RouteNames.settings);
         },
       ),
     ]);
@@ -151,7 +152,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Company Profile',
         onTap: () {
           context.pop();
-          // TODO: Navigate to company setup
+          context.go(RouteNames.companySetup);
         },
       ),
       _buildMenuItem(
@@ -159,7 +160,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Manage Offers',
         onTap: () {
           context.pop();
-          // TODO: Navigate to offers management
+          context.go(RouteNames.home + '/offers');
         },
       ),
       _buildMenuItem(
@@ -167,7 +168,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Applications',
         onTap: () {
           context.pop();
-          // TODO: Navigate to applications
+          context.go(RouteNames.home + '/applications');
         },
       ),
       _buildMenuItem(
@@ -175,7 +176,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Create PM Account',
         onTap: () {
           context.pop();
-          // TODO: Navigate to create PM
+          // TODO: add create PM route
         },
       ),
     ];
@@ -188,7 +189,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Projects',
         onTap: () {
           context.pop();
-          // TODO: Navigate to projects list
+          context.go(RouteNames.pmProjects);
         },
       ),
       _buildMenuItem(
@@ -196,7 +197,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Tasks Overview',
         onTap: () {
           context.pop();
-          // TODO: Navigate to tasks overview
+          context.go(RouteNames.tasks);
         },
       ),
       _buildMenuItem(
@@ -204,7 +205,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Feedback',
         onTap: () {
           context.pop();
-          // TODO: Navigate to feedback
+          // no route yet - keep drawer closed
         },
       ),
     ];
@@ -217,7 +218,7 @@ class AppDrawer extends StatelessWidget {
         title: 'Browse Offers',
         onTap: () {
           context.pop();
-          // TODO: Navigate to offers list
+          context.go(RouteNames.offers);
         },
       ),
       _buildMenuItem(
@@ -225,7 +226,7 @@ class AppDrawer extends StatelessWidget {
         title: 'My Applications',
         onTap: () {
           context.pop();
-          // TODO: Navigate to my applications
+          context.go(RouteNames.home + RouteNames.offers); // fallback - route not defined separately
         },
       ),
       _buildMenuItem(
@@ -233,7 +234,7 @@ class AppDrawer extends StatelessWidget {
         title: 'My Project',
         onTap: () {
           context.pop();
-          // TODO: Navigate to my project
+          context.go(RouteNames.myProject);
         },
       ),
       _buildMenuItem(
@@ -241,7 +242,7 @@ class AppDrawer extends StatelessWidget {
         title: 'My Tasks',
         onTap: () {
           context.pop();
-          // TODO: Navigate to tasks kanban
+          context.go(RouteNames.tasks);
         },
       ),
     ];

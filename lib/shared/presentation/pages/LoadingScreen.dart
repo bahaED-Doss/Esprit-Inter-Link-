@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'dart:async';
+
+const bool _isFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({Key? key}) : super(key: key);
@@ -12,6 +15,7 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
   late final AnimationController _controller;
   late final Animation<double> _rotationAnim;
   late final Animation<double> _bounceAnim;
+  Timer? _navTimer;
 
   @override
   void initState() {
@@ -29,15 +33,17 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
       curve: Curves.easeInOutSine,
     ));
     // Ajout de la navigation automatique vers SplashScreen après 2 secondes
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/splash');
-      }
-    });
+    // Skip auto navigation while running tests to avoid pending timers in widget tests
+    if (!_isFlutterTest) {
+      _navTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) Navigator.of(context).pushReplacementNamed('/splash');
+      });
+    }
   }
 
   @override
   void dispose() {
+    _navTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

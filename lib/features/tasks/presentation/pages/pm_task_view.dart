@@ -3,12 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/task_model.dart';
-import '../../models/project_model.dart';
+import '../../../projects/models/project_model.dart' show Project;
 import '../../providers/task_provider.dart';
+import '../../../projects/providers/project_provider.dart';
 import '../widgets/task_card.dart';
 import '../widgets/task_form_dialog.dart';
 import '../widgets/project_selector.dart';
 import '../widgets/kanban_board.dart';
+import '../../../../shared/providers/user_session_provider.dart';
 
 /// Vue PM pour la gestion des tâches
 /// Affichage vertical avec regroupement par status (TO_DO, DOING, DONE)
@@ -28,24 +30,36 @@ class PMTaskView extends StatefulWidget {
 }
 
 class _PMTaskViewState extends State<PMTaskView> {
-  ProjectModel? _selectedProject;
+  Project? _selectedProject;
 
   @override
   void initState() {
     super.initState();
-    _selectedProject = ProjectModel(
+    _selectedProject = Project(
       id: widget.projectId,
-      name: widget.projectName,
-      pmId: 1, // Mock PM ID
+      title: widget.projectName,
+      pmId: 1, // Mock PM ID as default
     );
+
+    // Load PM projects into ProjectProvider so the selector can display real projects
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final projProv = Provider.of<ProjectProvider>(context, listen: false);
+        final session = Provider.of<UserSessionProvider>(context, listen: false);
+        final pmId = session.isPM ? int.tryParse(session.userId ?? '') ?? 2 : 2;
+        projProv.loadProjects(pmId: pmId);
+      } catch (e) {
+        // Ignore if providers are not available in some contexts
+      }
+    });
   }
 
-  // Mock projects pour le sélecteur compact
-  List<ProjectModel> _getMockProjects() {
+  // Fallback mock projects in case ProjectProvider has none
+  List<Project> _getFallbackProjects() {
     return [
-      ProjectModel(id: 1, name: 'Mobile Application', pmId: 1),
-      ProjectModel(id: 2, name: 'Web Dashboard', pmId: 1),
-      ProjectModel(id: 3, name: 'Backend API', pmId: 1),
+      Project(id: 1, title: 'Mobile Application', pmId: 1),
+      Project(id: 2, title: 'Web Dashboard', pmId: 1),
+      Project(id: 3, title: 'Backend API', pmId: 1),
     ];
   }
 
@@ -76,24 +90,26 @@ class _PMTaskViewState extends State<PMTaskView> {
         ),
         body: Column(
           children: [
-            // Sélecteur de projet compact en haut
+            // Sélecteur de projet compact en haut - use real projects from ProjectProvider
             Container(
               padding: EdgeInsets.all(12),
               color: Colors.grey[100],
-              child: Builder(
-                builder: (ctx) => ProjectSelector(
-                  projects: _getMockProjects(),
-                  selectedProject: _selectedProject,
-                  onProjectSelected: (project) {
-                    // Update local selection
-                    setState(() {
-                      _selectedProject = project;
-                    });
-                    // Recharger les tâches du nouveau projet depuis le provider accessible via ctx
-                    Provider.of<TaskProvider>(ctx, listen: false).loadTasks(projectId: project.id);
-                  },
-                  compact: true,
-                ),
+              child: Consumer<ProjectProvider>(
+                builder: (ctx, projProv, _) {
+                  final projects = projProv.projects.isNotEmpty ? projProv.projects : _getFallbackProjects();
+                  return ProjectSelector(
+                    projects: projects,
+                    selectedProject: _selectedProject,
+                    onProjectSelected: (project) {
+                      setState(() {
+                        _selectedProject = project;
+                      });
+                      // Recharger les tâches du nouveau projet depuis le provider accessible via ctx
+                      Provider.of<TaskProvider>(ctx, listen: false).loadTasks(projectId: project.id);
+                    },
+                    compact: true,
+                  );
+                },
               ),
             ),
 
