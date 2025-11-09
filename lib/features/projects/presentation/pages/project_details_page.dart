@@ -117,6 +117,37 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
         false;
   }
 
+  // ADD THIS METHOD: Navigate to Task Creation
+  void _navigateToAddTask() {
+    if (_project?.id == null) {
+      _showSnackBar("Please save the project first before adding tasks");
+      return;
+    }
+
+    // Option 1: Navigate to PMTasksPage (existing route)
+    Navigator.pushNamed(
+      context,
+      '/tasks',
+      arguments: {
+        'projectId': _project!.id!,
+        'projectTitle': _project!.title,
+      },
+    ).then((_) {
+      // Refresh task list when returning
+      setState(() {});
+    });
+
+    // Option 2: If you create a dedicated task creation page later:
+    // Navigator.pushNamed(
+    //   context,
+    //   '/task_create',
+    //   arguments: {
+    //     'projectId': _project!.id!,
+    //     'projectTitle': _project!.title,
+    //   },
+    // );
+  }
+
   void _showSnackBar(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
   }
@@ -138,6 +169,14 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
           if (_isEditing) IconButton(icon: const Icon(Icons.check), onPressed: _saveProject),
           if (_isEditing) IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => _isEditing = false)),
           if (!isNew) IconButton(icon: const Icon(Icons.delete), onPressed: _deleteProject),
+
+          // ADD THIS: Add Task button in AppBar
+          if (!isNew && !_isEditing)
+            IconButton(
+              icon: const Icon(Icons.add_task),
+              onPressed: _navigateToAddTask,
+              tooltip: "Add Task",
+            ),
         ],
       ),
       body: Padding(
@@ -174,7 +213,23 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
               _infoTile("End Date", _project!.endDate != null ? df.format(_project!.endDate!) : "—"),
               const SizedBox(height: 24),
               const Divider(),
-              const Text("Tasks", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+
+              // ENHANCED: Tasks section with Add Task button
+              Row(
+                children: [
+                  const Text("Tasks", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const Spacer(),
+                  if (!isNew && !_isEditing)
+                    ElevatedButton.icon(
+                      onPressed: _navigateToAddTask,
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text("Add Task"),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                ],
+              ),
               const SizedBox(height: 8),
               if (_project!.id != null) ProjectTaskList(projectId: _project!.id!),
             ],
@@ -183,8 +238,15 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
       ),
       floatingActionButton: _isEditing
           ? FloatingActionButton.extended(
-          onPressed: _saveProject, label: const Text("Save"), icon: const Icon(Icons.check))
-          : null,
+          onPressed: _saveProject,
+          label: const Text("Save"),
+          icon: const Icon(Icons.check))
+      // ADD THIS: FAB for adding tasks when not editing
+          : (!isNew ? FloatingActionButton(
+        onPressed: _navigateToAddTask,
+        child: const Icon(Icons.add_task),
+        tooltip: "Add Task",
+      ) : null),
     );
   }
 
