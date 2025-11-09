@@ -5,15 +5,16 @@ class Project {
   final int? id;
   final String title;
   final String? description;
-  final String status; // e.g., 'ACTIVE','COMPLETED','ON_HOLD'
+  final String status;
   final String? technologiesUsed;
   final DateTime? startDate;
   final DateTime? endDate;
   final int? companyId;
-  final int pmId; // project manager user id
-  final int? studentId; // student user id
-  final String? assignedToEmail; // student email stored in legacy DB
-  final List<Map<String, dynamic>> milestones; // stored as JSON in DB
+  final int pmId;
+  final int? studentId;
+  final String? assignedToEmail;
+  final List<Map<String, dynamic>> milestones;
+  final int progress; // <-- new field
 
   Project({
     this.id,
@@ -28,10 +29,8 @@ class Project {
     this.studentId,
     this.assignedToEmail,
     List<Map<String, dynamic>>? milestones,
+    this.progress = 0, // default to 0
   }) : milestones = milestones ?? [];
-
-  // Compatibility: provide `name` alias used by temporary task model
-  String get name => title;
 
   Project copyWith({
     int? id,
@@ -46,6 +45,7 @@ class Project {
     int? studentId,
     String? assignedToEmail,
     List<Map<String, dynamic>>? milestones,
+    int? progress, // <-- add here
   }) {
     return Project(
       id: id ?? this.id,
@@ -60,15 +60,14 @@ class Project {
       studentId: studentId ?? this.studentId,
       assignedToEmail: assignedToEmail ?? this.assignedToEmail,
       milestones: milestones ?? this.milestones,
+      progress: progress ?? this.progress, // <-- add here
     );
   }
 
   Map<String, dynamic> toMap() {
-    // Provide both legacy ('name') and new ('title') keys to maximize
-    // compatibility with different DB schemas and helpers in the codebase.
     final map = <String, dynamic>{
       'title': title,
-      'name': title, // legacy column used in DB
+      'name': title,
       'description': description,
       'status': status,
       'technologies_used': technologiesUsed,
@@ -79,6 +78,7 @@ class Project {
       'student_id': studentId,
       'assigned_to': assignedToEmail,
       'milestones': jsonEncode(milestones),
+      'progress': progress, // <-- add here
     };
     if (id != null) map['id'] = id;
     return map..removeWhere((k, v) => v == null);
@@ -111,6 +111,7 @@ class Project {
       studentId: map['student_id'] as int?,
       assignedToEmail: map['assigned_to'] as String?,
       milestones: parsedMilestones,
+      progress: map['progress'] as int? ?? 0, // <-- add here
     );
   }
 }

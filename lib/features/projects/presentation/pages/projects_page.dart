@@ -14,6 +14,7 @@ class ProjectsPage extends StatefulWidget {
 
 class _ProjectsPageState extends State<ProjectsPage> {
   final TextEditingController _searchController = TextEditingController();
+  String _sortBy = 'date';
 
   @override
   void initState() {
@@ -28,12 +29,6 @@ class _ProjectsPageState extends State<ProjectsPage> {
     await prov.loadProjects(pmId: pmId);
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
   Future<bool> _confirmDelete(BuildContext ctx) async {
     return await showDialog<bool>(
       context: ctx,
@@ -43,73 +38,130 @@ class _ProjectsPageState extends State<ProjectsPage> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
           ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text("Delete")),
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Delete"),
+          ),
         ],
       ),
     ) ??
         false;
   }
 
-  Widget _buildProjectTile(BuildContext ctx, int i, ProjectProvider prov) {
-    final p = prov.projects[i];
+  Widget _buildStatusChip(String status) {
+    Color color;
+    switch (status) {
+      case 'Completed':
+        color = Colors.green;
+        break;
+      case 'Active':
+        color = Colors.blue;
+        break;
+      case 'Planning':
+        color = Colors.orange;
+        break;
+      case 'On Hold':
+        color = Colors.amber;
+        break;
+      case 'Cancelled':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+    return Chip(
+      label: Text(status),
+      backgroundColor: color.withOpacity(0.1),
+      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+      side: BorderSide(color: color),
+    );
+  }
 
-    return Dismissible(
-      key: ValueKey(p.id ?? i),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.centerRight,
-        color: Colors.red,
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      confirmDismiss: (dir) async {
-        final ok = await _confirmDelete(ctx);
-        if (ok && p.id != null) {
-          final removed = await prov.deleteProject(p.id!);
-          if (!removed && prov.error != null) {
-            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(prov.error!)));
-            return false;
-          }
-          ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Project deleted')));
-          return true;
-        }
-        return false;
-      },
-      onDismissed: (_) async => _loadProjects(),
-      child: Card(
-        child: ListTile(
-          title: Text(p.title),
-          subtitle: Text(p.description ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
-          trailing: PopupMenuButton<String>(
-            onSelected: (v) async {
-              if (v == 'edit') {
-                await Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ProjectDetailsPage(projectId: p.id, forceEdit: true),
-                ));
-                await _loadProjects();
-              } else if (v == 'delete' && p.id != null) {
-                final ok = await _confirmDelete(ctx);
-                if (ok) {
-                  final removed = await prov.deleteProject(p.id!);
-                  if (!removed && prov.error != null) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(prov.error!)));
-                  } else {
-                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Project deleted')));
-                    await _loadProjects();
-                  }
-                }
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('Edit')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
-            ],
-          ),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => ProjectDetailsPage(projectId: p.id),
-          )),
+
+  Widget _buildProjectTile(BuildContext ctx, int i, ProjectProvider prov) {
+    final p = prov.filteredProjects[i];
+    final progress = (p.progress ?? 0) / 100.0;
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ProjectDetailsPage(projectId: p.id),
+        )),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    p.title,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (v) async {
+                    if (v == 'edit') {
+                      await Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ProjectDetailsPage(projectId: p.id, forceEdit: true),
+                      ));
+                      await _loadProjects();
+                    } else if (v == 'delete' && p.id != null) {
+                      final ok = await _confirmDelete(ctx);
+                      if (ok) {
+                        final removed = await prov.deleteProject(p.id!);
+                        if (!removed && prov.error != null) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(prov.error!)));
+                        } else {
+                          ScaffoldMessenger.of(ctx)
+                              .showSnackBar(const SnackBar(content: Text('Project deleted')));
+                          await _loadProjects();
+                        }
+                      }
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              p.description ?? 'No description',
+              style: TextStyle(color: Colors.grey[700]),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildStatusChip(p.status ?? 'Pending'),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 6,
+                    backgroundColor: Colors.grey[200],
+                    color: progress < 1.0 ? Colors.blueAccent : Colors.green,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${p.progress ?? 0}%',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+          ]),
         ),
       ),
     );
@@ -118,6 +170,8 @@ class _ProjectsPageState extends State<ProjectsPage> {
   @override
   Widget build(BuildContext context) {
     return Consumer<ProjectProvider>(builder: (context, prov, child) {
+      final projects = prov.filteredProjects;
+
       return Scaffold(
         appBar: AppBar(
           title: const Text('Projects'),
@@ -128,12 +182,50 @@ class _ProjectsPageState extends State<ProjectsPage> {
                 if (v == 'reset_db') {
                   await DatabaseHelper.resetDatabase();
                   await _loadProjects();
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Database reset')));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text('Database reset')));
+                  }
                 }
               },
               itemBuilder: (_) => const [PopupMenuItem(value: 'reset_db', child: Text('Reset DB'))],
             ),
           ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(60),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search projects...',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25), borderSide: BorderSide.none),
+                    ),
+                    onChanged: (v) => prov.filterProjects(v),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                PopupMenuButton<String>(
+                  onSelected: (v) {
+                    setState(() => _sortBy = v);
+                    prov.sortProjects(v);
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'title', child: Text('Sort by Title')),
+                    PopupMenuItem(value: 'date', child: Text('Sort by Date')),
+                    PopupMenuItem(value: 'status', child: Text('Sort by Status')),
+                  ],
+                  child: const Icon(Icons.sort),
+                )
+              ]),
+            ),
+          ),
         ),
         body: RefreshIndicator(
           onRefresh: _loadProjects,
@@ -141,17 +233,27 @@ class _ProjectsPageState extends State<ProjectsPage> {
               ? const Center(child: CircularProgressIndicator())
               : prov.error != null
               ? Center(child: Text(prov.error!))
-              : prov.projects.isEmpty
-              ? const Center(child: Text('No projects'))
+              : projects.isEmpty
+              ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.folder_open, size: 80, color: Colors.grey[400]),
+                const SizedBox(height: 12),
+                const Text('No projects found', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+          )
               : ListView.separated(
             padding: const EdgeInsets.all(12),
-            itemCount: prov.projects.length,
+            itemCount: projects.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (ctx, i) => _buildProjectTile(ctx, i, prov),
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.add),
+        floatingActionButton: FloatingActionButton.extended(
+          icon: const Icon(Icons.add),
+          label: const Text("New Project"),
           onPressed: () async {
             await Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => const ProjectDetailsPage(forceEdit: true),
