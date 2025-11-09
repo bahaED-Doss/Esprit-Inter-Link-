@@ -70,6 +70,7 @@ void main() async {
     await DatabaseHelper.database; // Force la création/initialisation
     await DatabaseHelper.initializeMockProjectsIfNeeded(); // Insère les projets mock si besoin
     await DatabaseHelper.printDatabaseInfo();
+    // Suppression de l'initialisation du service de notifications locales
   } catch (e) {
     print('❌ Database initialization error: $e');
   }

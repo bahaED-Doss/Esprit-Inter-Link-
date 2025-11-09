@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import '../data/application_database_helper.dart';
+import '../data/application_repository.dart';
 import '../models/internship_model.dart';
 import '../models/application_model.dart';
+import '../../../shared/data/notification_service.dart';
 
 /// Provider pour la gestion d'état des candidatures et stages
 /// Équivalent d'un Service Angular/Spring
 /// Utilise le pattern ChangeNotifier pour notifier les widgets des changements
 class ApplicationProvider extends ChangeNotifier {
-  final ApplicationDatabaseHelper _db = ApplicationDatabaseHelper();
+  final ApplicationRepository _db = ApplicationRepository();
 
   // Internships
   List<Internship> _internships = [];
@@ -37,6 +38,11 @@ class ApplicationProvider extends ChangeNotifier {
   String? get internshipError => _internshipError;
   String? get applicationError => _applicationError;
   String get searchQuery => _searchQuery;
+
+  set internshipError(String? value) {
+    _internshipError = value;
+    notifyListeners();
+  }
 
   /// ===========================
   /// INTERNSHIP METHODS
@@ -280,6 +286,23 @@ class ApplicationProvider extends ChangeNotifier {
       _applications.insert(0, inserted);
       _applicationError = null;
       
+      // Notify the HR who posted the internship about the new application
+      try {
+        final internship = await _db.getInternshipById(application.internshipId);
+        final hrId = internship?.hrId;
+        if (hrId != null) {
+          await NotificationService.addNotificationForUser(
+            hrId,
+            '${application.fullName} applied to "${internship?.title ?? 'your internship'}"',
+            title: 'New application',
+            type: 'APPLICATION',
+            referenceId: application.internshipId,
+          );
+         }
+      } catch (e) {
+        print('⚠️ Failed to create HR notification for application: $e');
+      }
+
       _isLoadingApplications = false;
       notifyListeners();
       return true;

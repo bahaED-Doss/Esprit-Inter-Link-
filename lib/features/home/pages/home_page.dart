@@ -30,12 +30,13 @@ class HomePage extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              Navigator.pushNamed(context, '/notifications');
-            },
-          ),
+          if (userRole == UserRole.student || userRole == UserRole.hr)
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () {
+                Navigator.pushNamed(context, '/notifications');
+              },
+            ),
           // 🔹 Role switcher button (for testing only)
           const RoleSwitcher(),
         ],

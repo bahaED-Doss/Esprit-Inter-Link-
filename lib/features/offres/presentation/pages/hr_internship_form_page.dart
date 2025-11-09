@@ -138,6 +138,12 @@ class _HRInternshipFormPageState extends State<HRInternshipFormPage> {
     }
   }
 
+  int? _safeParseDuration(String raw) {
+    final v = int.tryParse(raw.trim());
+    if (v == null || v <= 0) return null;
+    return v;
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -150,6 +156,18 @@ class _HRInternshipFormPageState extends State<HRInternshipFormPage> {
           backgroundColor: Colors.orange,
         ),
       );
+      return;
+    }
+
+   // Validation durée
+    final duration = _safeParseDuration(_durationController.text);
+    if (duration == null) {ScaffoldMessenger.of(context).showSnackBar(
+
+        const SnackBar(
+          content: Text('Duration must be a positive number'),
+          backgroundColor: Colors.red,
+       ),
+     );
       return;
     }
 
@@ -176,7 +194,7 @@ class _HRInternshipFormPageState extends State<HRInternshipFormPage> {
       location: _locationController.text.trim(),
       type: _selectedType,
       status: _selectedStatus,
-      duration: int.parse(_durationController.text.trim()),
+      duration: duration,
       requirements: requirements,
       skills: skills,
       startDate: _startDate!,
@@ -186,14 +204,16 @@ class _HRInternshipFormPageState extends State<HRInternshipFormPage> {
     final provider = Provider.of<ApplicationProvider>(context, listen: false);
     
     bool success;
-    if (widget.internship == null) {
-      // Create
-      await provider.addInternship(internship);
-      success = provider.internshipError == null;
-    } else {
-      // Update
-      await provider.updateInternship(internship);
-      success = provider.internshipError == null;
+    try {
+      if (widget.internship == null) {
+        await provider.addInternship(internship);
+        success = provider.internshipError == null;
+      } else {
+        await provider.updateInternship(internship);
+        success = provider.internshipError == null;
+      }
+    } catch (e) {
+      success = false;
     }
 
     setState(() {

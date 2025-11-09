@@ -37,7 +37,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
   List<String> savedOffers = [];
 
   // Nouveau: informations sur l'étudiant et le projet assigné
-  final String _studentEmail = 'student@esprit.tn'; // assumption: demo student
+  final String _studentEmail = 'student@esprit.tn'; // ID 4 - Nouveau student pour les tests
   int? _studentId;
   int? _assignedProjectId;
   String? _assignedProjectName;
@@ -249,26 +249,17 @@ class _StudentHomePageState extends State<StudentHomePage> {
                                   const Icon(Icons.notifications_none, color: Colors.white),
                                   if (_unreadCount > 0)
                                     Positioned(
-                                      right: 0,
-                                      top: 0,
+                                      right: -6,
+                                      top: -6,
                                       child: Container(
-                                        padding: const EdgeInsets.all(2),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: Colors.red,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        constraints: const BoxConstraints(
-                                          minWidth: 16,
-                                          minHeight: 16,
+                                          borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: Text(
-                                          '$_unreadCount',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          textAlign: TextAlign.center,
+                                          _unreadCount > 9 ? '9+' : '$_unreadCount',
+                                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
                                         ),
                                       ),
                                     ),
@@ -276,70 +267,23 @@ class _StudentHomePageState extends State<StudentHomePage> {
                               ),
                               onPressed: () async {
                                 if (_studentId != null) {
-                                  await Navigator.push(
+                                  final result = await Navigator.push<bool?>(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => NotificationPage(userId: _studentId!),
                                     ),
                                   );
-                                  await _loadUnreadCount();
+                                  // If the notification page returned true it means the student confirmed the internship
+                                  if (result == true) {
+                                    await _initStudentData();
+                                  } else {
+                                    await _loadUnreadCount();
+                                  }
                                 }
                               },
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    // Checkbox en haut
-                    Padding(
-                      padding: const EdgeInsets.only(top: 32, left: 16, right: 16, bottom: 8),
-                      child: Row(
-                        children: [
-                          Checkbox(
-                            value: hasInternship,
-                            activeColor: const Color(0xFF8B1C1C),
-                            onChanged: (v) async {
-                              final newVal = v ?? false;
-                              setState(() => hasInternship = newVal);
-
-                              // Persister le statut dans la DB
-                              await DatabaseHelper.updateStudentInternshipStatus(_studentEmail, newVal ? 'INTERN' : 'CANDIDATE');
-
-                              if (newVal) {
-                                // Devenir intern -> assigner automatiquement le premier projet disponible
-                                final assignedId = await DatabaseHelper.assignFirstAvailableProjectToStudent(_studentEmail);
-                                if (assignedId != null) {
-                                  final proj = await DatabaseHelper.getProjectAssignedToStudent(_studentEmail);
-                                  setState(() {
-                                    _assignedProjectId = proj?['id'] as int?;
-                                    _assignedProjectName = proj?['name'] as String?;
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Assigned to project #$assignedId: ${_assignedProjectName ?? ''}')),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('No available project to assign')),
-                                  );
-                                }
-                              } else {
-                                // Revenir candidat -> désassigner les projets du student
-                                final count = await DatabaseHelper.unassignProjectsFromStudent(_studentEmail);
-                                setState(() {
-                                  _assignedProjectId = null;
-                                  _assignedProjectName = null;
-                                });
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Unassigned $count project(s) from student')),
-                                );
-                              }
-                            },
-                          ),
-                          const Text(
-                            'Student has internship',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                          ),
-                        ],
                       ),
                     ),
                     Expanded(

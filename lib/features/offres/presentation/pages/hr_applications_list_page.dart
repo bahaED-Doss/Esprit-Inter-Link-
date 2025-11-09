@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../aplication/models/application_model.dart';
 import '../../../aplication/models/internship_model.dart';
 import '../../../aplication/providers/application_provider.dart';
+import '../../../../data/datasources/local/database_helper.dart' as CoreDB;
 
 /// Page listant toutes les candidatures pour une offre de stage avec Accept/Refuse
 class HRApplicationsListPage extends StatefulWidget {
@@ -63,12 +64,63 @@ class _HRApplicationsListPageState extends State<HRApplicationsListPage> {
       final success = await provider.updateApplication(updated);
       
       if (success && mounted) {
+        // 1. Fermer l'offre (status = CLOSED)
+        try {
+          final db = await CoreDB.DatabaseHelper.database;
+          await db.update(
+            'internships',
+            {'status': 'CLOSED', 'updatedAt': DateTime.now().toIso8601String()},
+            where: 'id = ?',
+            whereArgs: [application.internshipId],
+          );
+        } catch (e) {
+          print('⚠️ Failed to close internship: $e');
+        }
+
+        // 2. Récupérer l'email de l'étudiant et le marquer comme INTERN
+        try {
+          final db = await CoreDB.DatabaseHelper.database;
+          final user = await db.query('users', where: 'id = ?', whereArgs: [application.studentId], limit: 1);
+          if (user.isNotEmpty) {
+            final email = user.first['email'] as String;
+
+            // Mettre à jour le statut de l'étudiant
+            await CoreDB.DatabaseHelper.updateStudentInternshipStatus(email, 'INTERN');
+
+            // 3. Assigner automatiquement un projet à l'étudiant
+            final assignedId = await CoreDB.DatabaseHelper.assignFirstAvailableProjectToStudent(email);
+
+            if (assignedId != null) {
+              print('✅ Student assigned to project #$assignedId');
+            }
+          }
+        } catch (e) {
+          print('⚠️ Failed to update student status or assign project: $e');
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Application accepted!'),
+            content: Text('Application accepted! Student is now an intern.'),
             backgroundColor: Colors.green,
           ),
         );
+
+        // Envoyer une notification à l'étudiant pour l'informer de la décision
+        try {
+          await CoreDB.DatabaseHelper.insertNotification(
+            userId: application.studentId,
+            title: 'Application accepted',
+            message: 'Your application for internship #${application.internshipId} has been accepted by the company.\nDouble-tap this notification to confirm and become an intern.',
+            type: 'APPLICATION_ACCEPTED',
+            referenceId: application.internshipId,
+          );
+        } catch (e) {
+          // Ignorer les erreurs de notification (ne doit pas casser l'UI)
+          print('⚠️ Failed to send acceptance notification: $e');
+        }
+
+        // Recharger les données
+        await _loadData();
       }
     }
   }
@@ -105,6 +157,18 @@ class _HRApplicationsListPageState extends State<HRApplicationsListPage> {
             backgroundColor: Colors.red,
           ),
         );
+        // Envoyer une notification de rejet à l'étudiant
+        try {
+          await CoreDB.DatabaseHelper.insertNotification(
+            userId: application.studentId,
+            title: 'Application refused',
+            message: 'Your application for internship #${application.internshipId} has been refused by the company.',
+            type: 'APPLICATION_REJECTED',
+            referenceId: application.internshipId,
+          );
+        } catch (e) {
+          print('⚠️ Failed to send rejection notification: $e');
+        }
       }
     }
   }

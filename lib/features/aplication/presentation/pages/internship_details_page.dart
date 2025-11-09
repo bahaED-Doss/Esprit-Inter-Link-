@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/internship_model.dart';
 import '../../providers/application_provider.dart';
 import 'application_form_page.dart';
+import '../../../../data/datasources/local/database_helper.dart';
 
 /// Page affichant les détails complets d'une offre de stage
 class InternshipDetailsPage extends StatefulWidget {
@@ -23,6 +24,7 @@ class InternshipDetailsPage extends StatefulWidget {
 class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
   bool _hasApplied = false;
   bool _isLoading = true;
+  bool _studentHasInternship = false;
 
   @override
   void initState() {
@@ -44,9 +46,23 @@ class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
 
     final provider = Provider.of<ApplicationProvider>(context, listen: false);
     final hasApplied = await provider.hasApplied(widget.studentId!, widget.internship.id!);
+
+    // Vérifier si l'étudiant a déjà un internship
+    bool hasInternship = false;
+    try {
+      final db = await DatabaseHelper.database;
+      final user = await db.query('users', where: 'id = ?', whereArgs: [widget.studentId], limit: 1);
+      if (user.isNotEmpty) {
+        hasInternship = (user.first['internship_status'] as String?) == 'INTERN';
+      }
+    } catch (e) {
+      print('⚠️ Failed to check student internship status: $e');
+    }
+
     if (mounted) {
       setState(() {
         _hasApplied = hasApplied;
+        _studentHasInternship = hasInternship;
         _isLoading = false;
       });
     }
@@ -199,7 +215,7 @@ class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
                   ),
                 ],
               ),
-              child: _hasApplied
+              child: _hasApplied || _studentHasInternship || widget.internship.status == 'CLOSED'
                   ? Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -208,7 +224,7 @@ class _InternshipDetailsPageState extends State<InternshipDetailsPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
-                        'ALREADY APPLIED',
+                        'APPLICATION NOT POSSIBLE',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,

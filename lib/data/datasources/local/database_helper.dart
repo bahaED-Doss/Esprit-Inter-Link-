@@ -39,7 +39,7 @@ class DatabaseHelper {
       dbPath,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
-      version: 5, // Bumped to 5 to add internships and applications tables
+      version: 6, // Bumped to 6 to fix notifications table structure
     );
   }
 
@@ -124,10 +124,14 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        userId INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
         message TEXT NOT NULL,
-        read INTEGER DEFAULT 0,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        type TEXT DEFAULT 'SYSTEM',
+        reference_id INTEGER,
+        is_read INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       );
     ''');
 
@@ -212,22 +216,31 @@ class DatabaseHelper {
       }
     }
 
-    // S'assurer que la table notifications existe
-    try {
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS notifications (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          title TEXT NOT NULL,
-          message TEXT NOT NULL,
-          type TEXT CHECK(type IN ('TROPHY', 'TASK', 'PROJECT', 'SYSTEM')) DEFAULT 'SYSTEM',
-          reference_id INTEGER,
-          is_read INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-      ''');
-    } catch (_) {}
+    // S'assurer que la table notifications existe avec la bonne structure
+    if (oldVersion < 6) {
+      try {
+        // Supprimer l'ancienne table notifications si elle existe
+        await db.execute('DROP TABLE IF EXISTS notifications');
+
+        // Recréer avec la nouvelle structure
+        await db.execute('''
+          CREATE TABLE notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            type TEXT DEFAULT 'SYSTEM',
+            reference_id INTEGER,
+            is_read INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+          );
+        ''');
+        print('✅ Notifications table recreated with correct structure');
+      } catch (e) {
+        print('⚠️ Error recreating notifications table: $e');
+      }
+    }
 
     // Ajouter les tables internships et applications si on migre depuis <5
     if (oldVersion < 5) {
@@ -300,7 +313,14 @@ class DatabaseHelper {
       'role': 'HR',
       'internship_status': 'CANDIDATE' // Ignoré pour HR
     });
-    print('👥 Mock users inserted: Student (1), PM (2), HR (3)');
+    await db.insert('users', {
+      'id': 4,
+      'email': 'student2@esprit.tn',
+      'name': 'Test Student',
+      'role': 'STUDENT',
+      'internship_status': 'CANDIDATE' // Nouveau student pour les tests
+    });
+    print('👥 Mock users inserted: Student (1), PM (2), HR (3), Test Student (4)');
   }
 
   static Future<void> _insertAllTrophies(Database db) async {
@@ -508,6 +528,12 @@ class DatabaseHelper {
   static Future<int> markAllNotificationsRead(int userId) async {
     final db = await database;
     return await db.update('notifications', {'is_read': 1}, where: 'user_id = ? AND is_read = 0', whereArgs: [userId]);
+  }
+
+  // Mark a single notification as read by id
+  static Future<int> markNotificationRead(int notificationId) async {
+    final db = await database;
+    return await db.update('notifications', {'is_read': 1}, where: 'id = ?', whereArgs: [notificationId]);
   }
 
   // ==================

@@ -137,6 +137,7 @@ class _ApplicationFormPageState extends State<ApplicationFormPage> {
     });
 
     if (success && mounted) {
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Application submitted successfully!'),

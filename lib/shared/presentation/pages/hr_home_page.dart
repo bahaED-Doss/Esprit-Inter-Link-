@@ -40,10 +40,26 @@ class _HomePageMock extends StatefulWidget {
 
 class _HomePageMockState extends State<_HomePageMock> {
   int _selectedIndex = 0;
+  int _unreadCount = 0;
   List<String> savedCandidates = [];
   bool _candidatesClicked = false;
   bool _showPopover = false;
   int? _popoverSelectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await NotificationService.getUnreadCount(widget.userId);
+      if (mounted) setState(() => _unreadCount = count);
+    } catch (e) {
+      // ignore errors silently
+    }
+  }
 
   void _onLongPressStartMiddleButton(LongPressStartDetails details) {
     setState(() {
@@ -124,14 +140,38 @@ class _HomePageMockState extends State<_HomePageMock> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            IconButton(
-                              icon: const Icon(Icons.notifications_none, color: Colors.white),
-                              onPressed: () {
-                                Navigator.push(
+                            // Notification icon with badge
+                            GestureDetector(
+                              onTap: () async {
+                                await Navigator.push(
                                   context,
                                   MaterialPageRoute(builder: (_) => NotificationPage(userId: widget.userId)),
                                 );
+                                // After returning from notifications, reload unread count
+                                await _loadUnreadCount();
                               },
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  const Icon(Icons.notifications_none, color: Colors.white, size: 28),
+                                  if (_unreadCount > 0)
+                                    Positioned(
+                                      right: -6,
+                                      top: -6,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          _unreadCount > 9 ? '9+' : '$_unreadCount',
+                                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -223,7 +263,7 @@ class _HomePageMockState extends State<_HomePageMock> {
                 });
               },
               child: Container(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withAlpha((0.4 * 255).round()),
                 width: double.infinity,
                 height: double.infinity,
               ),

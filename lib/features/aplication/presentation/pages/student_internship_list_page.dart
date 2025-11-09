@@ -337,10 +337,10 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
                       _buildInfoChip(Icons.schedule, '${internship.duration} months'),
                     ],
                   ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Bouton Apply
+
+                   const SizedBox(height: 16),
+
+                   // Bouton Apply
                   Align(
                     alignment: Alignment.centerRight,
                     child: Container(
@@ -360,14 +360,14 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                 ],
+               ),
+             ),
+           ],
+         ),
+       ),
+     );
+   }
 
   Widget _buildInfoChip(IconData icon, String text) {
     return Row(

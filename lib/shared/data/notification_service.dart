@@ -2,15 +2,19 @@ import 'package:sqflite/sqflite.dart';
 import '../../data/datasources/local/database_helper.dart';
 
 class NotificationService {
-  // Ajoute une notification pour un utilisateur
+  // Ajoute une notification pour un utilisateur (base de données uniquement)
   static Future<void> addNotificationForUser(int userId, String message, {String title = 'Notification', String type = 'SYSTEM', int? referenceId}) async {
-    await DatabaseHelper.insertNotification(
-      userId: userId,
-      title: title,
-      message: message,
-      type: type,
-      referenceId: referenceId,
-    );
+    try {
+      await DatabaseHelper.insertNotification(
+        userId: userId,
+        title: title,
+        message: message,
+        type: type,
+        referenceId: referenceId,
+      );
+    } catch (e) {
+      print('⚠️ addNotificationForUser failed: $e');
+    }
   }
 
   // Récupère le nombre de notifications non lues pour un utilisateur
@@ -23,7 +27,7 @@ class NotificationService {
     return await DatabaseHelper.getNotificationsForUser(userId);
   }
 
-  // Marque toutes les notifications comme lues pour un utilisateur
+  // Marque toutes les notifications comme lues
   static Future<void> markAllAsRead(int userId) async {
     await DatabaseHelper.markAllNotificationsRead(userId);
   }
