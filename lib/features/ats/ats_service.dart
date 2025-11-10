@@ -1,83 +1,174 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
-class AtsService {
+class GeminiAtsService {
   final String apiKey;
-  final String baseUrl = 'https://api.affinda.com/v3';
-  final String workspaceId;
+  final Duration timeout;
 
-  /// Exemple d'instanciation :
-  /// final atsService = AtsService('aff_857f431e2a9e34093d85101e993fd3e7016bdc6d', workspaceId: 'XSTrTbKH');
-  AtsService(this.apiKey, {required this.workspaceId});
+  GeminiAtsService(this.apiKey, {this.timeout = const Duration(seconds: 20)});
 
-  /// 📤 Upload du fichier CV vers Affinda
-  Future<String> uploadCV(File file) async {
-    final allowedExtensions = ['pdf', 'docx'];
-    final ext = file.path.split('.').last.toLowerCase();
-    if (!allowedExtensions.contains(ext)) {
-      throw Exception('Format de fichier non supporté. Veuillez choisir un PDF ou DOCX.');
+  /// Analyse le CV à partir du texte fourni et prend en option une description d'internship.
+  Future<Map<String, dynamic>> analyzeCVText(String cvText, {String? internshipDescription}) async {
+    if (cvText.trim().isEmpty) {
+      throw Exception('Le texte du CV est vide.');
     }
 
-    final uri = Uri.parse('$baseUrl/documents');
-    final request = http.MultipartRequest('POST', uri)
-      ..headers['Authorization'] = 'Bearer $apiKey'
-      ..fields['workflow'] = 'resume'
-      ..files.add(
-        await http.MultipartFile.fromPath(
-          'file',
-          file.path,
-          filename: file.uri.pathSegments.last,
-        ),
-      );
+    final descPart = (internshipDescription != null && internshipDescription.trim().isNotEmpty)
+        ? ' for this internship: "${internshipDescription.trim()}"'
+        : '';
 
-    if (workspaceId.isNotEmpty) {
-      request.fields['workspace'] = workspaceId;
-    }
+    final prompt =
+        'I\'m a student searching for an internship$descPart. Please analyze my CV and help me enhance it.\n\n'
+        'Provide your response ONLY as a valid JSON object with these exact keys:\n'
+        '- "score": a number between 0 and 10\n'
+        '- "highlights": an array of 3-4 short strings describing the CV\'s strengths\n'
+        '- "suggestions": an array of exactly 5 short, actionable suggestions to improve the CV\n\n'
+        'CV Content:\n${_truncate(cvText, 15000)}\n\n'
+        'Return ONLY the JSON object, no other text.';
 
-    final response = await request.send();
-    final respStr = await response.stream.bytesToString();
+    final uri = Uri.https(
+      'generativelanguage.googleapis.com',
+      '/v1beta/models/gemini-2.5-flash:generateContent',
+      {'key': apiKey}
+    );
 
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      final data = json.decode(respStr);
-      // Essayer de trouver l'identifiant dans plusieurs endroits
-      String? identifier;
-      if (data['identifier'] != null) {
-        identifier = data['identifier'];
-      } else if (data['meta'] != null && data['meta']['identifier'] != null) {
-        identifier = data['meta']['identifier'];
-      } else if (data['data'] != null && data['data']['meta'] != null && data['data']['meta']['identifier'] != null) {
-        identifier = data['data']['meta']['identifier'];
+    final body = {
+      'contents': [
+        {
+          'parts': [
+            {'text': prompt}
+          ]
+        }
+      ],
+      'generationConfig': {
+        'temperature': 0.3,
+        'maxOutputTokens': 1500,
+        'topP': 0.95,
+        'topK': 40,
+      },
+    };
+
+    try {
+      if (kDebugMode) {
+        print('[GeminiATS] Sending request...');
       }
-      if (identifier != null) {
-        return identifier;
+
+      final resp = await http
+          .post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
+      )
+          .timeout(timeout);
+
+      if (kDebugMode) {
+        print('[GeminiATS] HTTP ${resp.statusCode}');
+      }
+
+      if (resp.statusCode != 200) {
+        if (kDebugMode) print('[GeminiATS] Error: ${resp.body}');
+        throw Exception('Erreur API Gemini: ${resp.statusCode}');
+      }
+
+      final data = json.decode(resp.body) as Map<String, dynamic>;
+
+      // Extraire le texte de la réponse Gemini
+      final candidates = data['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) {
+        throw Exception('Aucune réponse de l\'API Gemini');
+      }
+
+      final candidate = candidates[0] as Map<String, dynamic>;
+      final content = candidate['content'] as Map<String, dynamic>?;
+
+      if (content == null) {
+        throw Exception('Réponse Gemini vide');
+      }
+
+      final parts = content['parts'] as List?;
+      if (parts == null || parts.isEmpty) {
+        throw Exception('Réponse Gemini incomplète');
+      }
+
+      final textParts = <String>[];
+      for (final part in parts) {
+        if (part is Map<String, dynamic> && part['text'] is String) {
+          textParts.add(part['text'] as String);
+        }
+      }
+
+      if (textParts.isEmpty) {
+        throw Exception('Pas de texte dans la réponse Gemini');
+      }
+
+      final fullText = textParts.join('\n').trim();
+
+      if (kDebugMode) {
+        print('[GeminiATS] Response text: $fullText');
+      }
+
+      final extractedJson = _extractJsonFromText(fullText);
+      if (extractedJson == null) {
+        throw Exception('Réponse Gemini non parsable en JSON');
+      }
+
+      // Normaliser le format
+      final normalized = Map<String, dynamic>.from(extractedJson);
+
+      // S'assurer que le score est un nombre
+      if (normalized['score'] is String) {
+        normalized['score'] = double.tryParse(normalized['score']) ?? 0;
+      }
+
+      // Limiter les suggestions à 5
+      if (normalized['suggestions'] is List) {
+        normalized['suggestions'] = (normalized['suggestions'] as List)
+            .map((e) => e.toString())
+            .take(5)
+            .toList();
+      }
+
+      // S'assurer que highlights existe
+      if (normalized['highlights'] is List) {
+        normalized['highlights'] = (normalized['highlights'] as List)
+            .map((e) => e.toString())
+            .toList();
       } else {
-        throw Exception('Réponse API inattendue: identifiant non trouvé.\n${respStr}');
+        normalized['highlights'] = [];
       }
-    } else {
-      String errorMsg = 'Erreur upload CV: ${response.statusCode}';
-      try {
-        final data = json.decode(respStr);
-        errorMsg += '\n${data['error'] ?? data['detail'] ?? respStr}';
-      } catch (_) {
-        errorMsg += '\n$respStr';
-      }
-      throw Exception(errorMsg);
+
+      return normalized;
+
+    } on TimeoutException {
+      if (kDebugMode) print('[GeminiATS] Timeout');
+      throw Exception('La requête a expiré. Veuillez réessayer.');
+    } catch (e) {
+      if (kDebugMode) print('[GeminiATS] Exception: $e');
+      rethrow;
     }
   }
 
-  /// 📥 Récupère les données structurées du CV via l'identifiant
-  Future<Map<String, dynamic>> fetchParsedCV(String identifier) async {
-    final uri = Uri.parse('$baseUrl/documents/$identifier');
-    final response = await http.get(uri, headers: {
-      'Authorization': 'Bearer $apiKey',
-    });
+  String _truncate(String s, int max) {
+    if (s.length <= max) return s;
+    return s.substring(0, max);
+  }
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['data'] ?? {};
-    } else {
-      throw Exception('Erreur récupération CV: ${response.statusCode}');
+  Map<String, dynamic>? _extractJsonFromText(String text) {
+    // Chercher un objet JSON dans le texte
+    final jsonStart = text.indexOf('{');
+    final jsonEnd = text.lastIndexOf('}');
+
+    if (jsonStart == -1 || jsonEnd == -1 || jsonEnd <= jsonStart) return null;
+
+    final candidate = text.substring(jsonStart, jsonEnd + 1);
+    try {
+      final decoded = json.decode(candidate);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 }

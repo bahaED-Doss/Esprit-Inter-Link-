@@ -42,6 +42,7 @@ void main() async {
     // Debug: indiquer si dotenv est initialisé et si la clé est présente (ne pas afficher la clé)
     print('dotenv initialized: ${dotenv.isInitialized}');
     print('GEMINI_API_KEY present: ${dotenv.env['GEMINI_API_KEY']?.trim().isNotEmpty ?? false}');
+    print('GEMINI_API_KEY2 present: ${dotenv.env['GEMINI_API_KEY2']?.trim().isNotEmpty ?? false}');
   } catch (e) {
     // ignore: avoid_print
     print('.env not found or failed to load: $e');
@@ -52,7 +53,7 @@ void main() async {
     const fallbackPath = r'C:\Users\bahae\Documents\5sae8\Mobile Project\esprit_interlink\.env';
     try {
       await dotenv.load(fileName: fallbackPath);
-      print('Fallback dotenv load attempted: initialized=${dotenv.isInitialized}, keyPresent=${dotenv.env['GEMINI_API_KEY']?.trim().isNotEmpty ?? false}');
+      print('Fallback dotenv load attempted: initialized=${dotenv.isInitialized}, keyPresent=${dotenv.env['GEMINI_API_KEY']?.trim().isNotEmpty ?? false}, key2Present=${dotenv.env['GEMINI_API_KEY2']?.trim().isNotEmpty ?? false}');
     } catch (e) {
       print('Fallback dotenv load failed: $e');
     }
