@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import '../widgets/zoomable_image.dart';
 import 'notification_page.dart';
 import '../todo/saved_offers_page.dart';
 import '../../../features/ats/ats_page.dart';
 import '../../../features/tasks/presentation/pages/student_task_view.dart';
 import '../../../data/datasources/local/database_helper.dart';
 import '../../data/notification_service.dart';
+import '../../providers/user_session_provider.dart';
+import 'package:provider/provider.dart';
 
 class StudentHomePage extends StatefulWidget {
   const StudentHomePage({Key? key}) : super(key: key);
@@ -20,7 +21,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
   bool isEditing = false;
   bool isFloating = false;
   int? editingIndex;
-  int? floatingIndex; // Pour l'échange
+  int? floatingIndex;
   String? floatingMessage;
   int? popoverSelectedIndex;
   int _selectedIndex = 0;
@@ -36,8 +37,19 @@ class _StudentHomePageState extends State<StudentHomePage> {
   ];
   List<String> savedOffers = [];
 
-  // Nouveau: informations sur l'étudiant et le projet assigné
-  final String _studentEmail = 'student@esprit.tn'; // ID 4 - Nouveau student pour les tests
+  // Mock data for recent offers
+  final List<Map<String, dynamic>> _recentOffers = [
+    {
+      'logo': 'G',
+      'company': 'Google Inc',
+      'location': 'California, USA',
+      'salary': '100dt/Mo',
+      'title': 'Senior designer',
+      'type': 'Full time',
+    },
+  ];
+
+  final String _studentEmail = 'student@esprit.tn';
   int? _studentId;
   int? _assignedProjectId;
   String? _assignedProjectName;
@@ -59,10 +71,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
   }
 
   Future<void> _initStudentData() async {
-    // Ensure mock projects exist
     await DatabaseHelper.initializeMockProjectsIfNeeded();
-
-    // Récupérer l'utilisateur demo
     final db = await DatabaseHelper.database;
     final users = await db.query('users', where: 'email = ?', whereArgs: [_studentEmail], limit: 1);
     if (users.isNotEmpty) {
@@ -73,8 +82,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
       });
       await _refreshUnread();
     }
-
-    // Récupérer le projet assigné à cet email (s'il existe)
     final project = await DatabaseHelper.getProjectAssignedToStudent(_studentEmail);
     if (project != null) {
       setState(() {
@@ -101,10 +108,8 @@ class _StudentHomePageState extends State<StudentHomePage> {
   }
 
   void _onLongPressMoveUpdateMiddleButton(LongPressMoveUpdateDetails details, BuildContext context) {
-    // Calculer la position du doigt par rapport au popover
     final RenderBox box = context.findRenderObject() as RenderBox;
     final Offset localOffset = box.globalToLocal(details.globalPosition);
-    // Popover centré, largeur ~3*60=180, hauteur ~100, bottom: 70
     final double popoverWidth = 220;
     final double popoverHeight = 100;
     final Size screenSize = MediaQuery.of(context).size;
@@ -140,7 +145,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
 
   void _onSelectPopover(int index) {
     if (index == 3) {
-      // Edit
       setState(() {
         isEditing = true;
         isFloating = true;
@@ -148,21 +152,17 @@ class _StudentHomePageState extends State<StudentHomePage> {
         floatingMessage = null;
       });
     } else if (index == 2) {
-      // Trophies
       Navigator.pushNamed(context, '/trophies');
       setState(() {
         showPopover = false;
       });
     } else if (index == 0) {
-      // Project (si l'étudiant a un stage)
       if (hasInternship) {
-        // Naviguer vers la page projet (si besoin) - pour l'instant on ferme simplement
         setState(() {
           showPopover = false;
         });
       }
     } else if (index == 1) {
-      // Tasks (si l'étudiant a un stage)
       if (hasInternship && _assignedProjectId != null && _studentId != null) {
         Navigator.push(
           context,
@@ -178,7 +178,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
           showPopover = false;
         });
       } else {
-        // Aucun projet assigné ou pas encore d'internship
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('No assigned project or internship not confirmed yet')),
         );
@@ -206,6 +205,11 @@ class _StudentHomePageState extends State<StudentHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final userSession = context.watch<UserSessionProvider?>();
+    final String userName = userSession?.userName ?? '';
+    final String greeting = userName.isNotEmpty ? 'Hey $userName' : 'Hey there';
+    final bool isStudent = !hasInternship;
+
     return Stack(
       children: [
         Scaffold(
@@ -214,6 +218,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
               ? SavedOffersPage(savedOffers: savedOffers)
               : Column(
                   children: [
+                    // TOP BAR
                     SafeArea(
                       top: true,
                       child: Container(
@@ -221,7 +226,10 @@ class _StudentHomePageState extends State<StudentHomePage> {
                         color: const Color(0xFF821E23),
                         child: Row(
                           children: [
-                            CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/icons/avatar.png')),
+                            GestureDetector(
+                              onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/role_select', (r) => false),
+                              child: const CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/icons/avatar.png')),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Container(
@@ -230,33 +238,42 @@ class _StudentHomePageState extends State<StudentHomePage> {
                                   color: Colors.white.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Row(
+                                child: const Row(
                                   children: [
-                                    const SizedBox(width: 12),
-                                    const Icon(Icons.search, color: Colors.white70, size: 20),
-                                    const SizedBox(width: 8),
-                                    const Expanded(
-                                      child: Text('Search', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                                    ),
+                                    SizedBox(width: 12),
+                                    Icon(Icons.search, color: Colors.white70, size: 20),
+                                    SizedBox(width: 8),
+                                    Expanded(child: Text('Search', style: TextStyle(color: Colors.white70, fontSize: 16))),
                                   ],
                                 ),
                               ),
                             ),
                             const SizedBox(width: 12),
-                            IconButton(
-                              icon: Stack(
+                            GestureDetector(
+                              onTap: () async {
+                                if (_studentId != null) {
+                                  final result = await Navigator.push<bool?>(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => NotificationPage(userId: _studentId!)),
+                                  );
+                                  if (result == true) {
+                                    await _initStudentData();
+                                  } else {
+                                    await _loadUnreadCount();
+                                  }
+                                }
+                              },
+                              child: Stack(
+                                clipBehavior: Clip.none,
                                 children: [
-                                  const Icon(Icons.notifications_none, color: Colors.white),
+                                  const Icon(Icons.notifications_none, color: Colors.white, size: 28),
                                   if (_unreadCount > 0)
                                     Positioned(
                                       right: -6,
                                       top: -6,
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
+                                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
                                         child: Text(
                                           _unreadCount > 9 ? '9+' : '$_unreadCount',
                                           style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
@@ -265,61 +282,222 @@ class _StudentHomePageState extends State<StudentHomePage> {
                                     ),
                                 ],
                               ),
-                              onPressed: () async {
-                                if (_studentId != null) {
-                                  final result = await Navigator.push<bool?>(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => NotificationPage(userId: _studentId!),
-                                    ),
-                                  );
-                                  // If the notification page returned true it means the student confirmed the internship
-                                  if (result == true) {
-                                    await _initStudentData();
-                                  } else {
-                                    await _loadUnreadCount();
-                                  }
-                                }
-                              },
                             ),
                           ],
                         ),
                       ),
                     ),
+
+                    // MAIN CONTENT - NEW DESIGN
                     Expanded(
-                      child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              "Hey Wyvern team , this home page\nwill be filled later like this :",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: Color(0xFF1A1A2E)),
+                            const SizedBox(height: 4),
+                            Text(
+                              greeting,
+                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E)),
                             ),
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              width: 180,
-                              height: 120,
-                              child: ZoomableImage(imagePath: 'assets/images/Screenshot.png'),
-                            ),
-                            const SizedBox(height: 24),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF8B1C1C),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            const SizedBox(height: 16),
+
+                            // BANNER WITH IMAGE OVERLAY
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: AspectRatio(
+                                aspectRatio: 16 / 9,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/hmpimg.png',
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      errorBuilder: (c, e, s) => Container(
+                                        color: const Color(0xFFEFEFEF),
+                                        child: const Center(
+                                          child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                                        ),
+                                      ),
+                                    ),
+                                    // Dark overlay for better text visibility
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.black.withValues(alpha: 0.5),
+                                            Colors.black.withValues(alpha: 0.1),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    // Text and button overlay
+                                    Positioned(
+                                      top: 20,
+                                      left: 20,
+                                      right: 20,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            isStudent ? 'Generate your Best\nResume/CV' : 'Time to shine, intern!\ncheck your tasks',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1.2,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              if (isStudent) {
+                                                Navigator.push(context, MaterialPageRoute(builder: (_) => const AtsPage()));
+                                              } else {
+                                                if (_assignedProjectId != null && _studentId != null) {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => StudentTaskView(
+                                                        projectId: _assignedProjectId!,
+                                                        userId: _studentId!,
+                                                        projectName: _assignedProjectName ?? 'Project',
+                                                      ),
+                                                    ),
+                                                  );
+                                                } else {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    const SnackBar(content: Text('No project assigned yet.')),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.white,
+                                              foregroundColor: const Color(0xFF821E23),
+                                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              isStudent ? 'Try Now' : 'Click here',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              onPressed: () {
-                                Navigator.pushNamedAndRemoveUntil(context, '/role_select', (route) => false);
-                              },
-                              child: const Text('Back to Select User'),
                             ),
+
+                            const SizedBox(height: 32),
+                            const Text('Find Your Internship', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
+                            const SizedBox(height: 16),
+
+                            // 3 Offer Type Cards
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildOfferTypeCard(
+                                  icon: Icons.document_scanner,
+                                  label: 'Remote ',
+                                  color: const Color(0xFFE3F2FD),
+                                  onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                                ),
+                                _buildOfferTypeCard(
+                                  icon: Icons.work,
+                                  label: 'Full Time',
+                                  color: const Color(0xFFEDE7F6),
+                                  onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                                ),
+                                _buildOfferTypeCard(
+                                  icon: Icons.schedule,
+                                  label: 'Part Time',
+                                  color: const Color(0xFFFFF3E0),
+                                  onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 32),
+                            const Text('Recent offers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
+                            const SizedBox(height: 16),
+
+                            // Recent Offer Card
+                            ..._recentOffers.map((offer) => Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 4))
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: const Color(0xFFF1F1F1),
+                                        child: Text(offer['logo'], style: const TextStyle(color: Color(0xFF821E23), fontWeight: FontWeight.bold)),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(offer['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                                            Text(offer['company'], style: const TextStyle(fontSize: 14, color: Color(0xFF666666))),
+                                            const SizedBox(height: 4),
+                                            Text(offer['location'], style: const TextStyle(fontSize: 12, color: Color(0xFF999999))),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        children: [
+                                          Text(offer['salary'], style: const TextStyle(fontSize: 12, color: Color(0xFF821E23), fontWeight: FontWeight.w600)),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFFF0E6),
+                                              borderRadius: BorderRadius.circular(16),
+                                            ),
+                                            child: Text(offer['type'], style: const TextStyle(fontSize: 12, color: Color(0xFF821E23))),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          ElevatedButton(
+                                            onPressed: () {},
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF821E23),
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                              minimumSize: const Size(80, 32),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            ),
+                                            child: const Text('Apply', style: TextStyle(fontSize: 12)),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                )),
                           ],
                         ),
                       ),
                     ),
                   ],
                 ),
+
+          // BOTTOM NAVIGATION BAR
           bottomNavigationBar: Stack(
             children: [
               Container(
@@ -395,243 +573,71 @@ class _StudentHomePageState extends State<StudentHomePage> {
                                       setState(() {
                                         _selectedIndex = i;
                                         if (i == 3) {
-                                          // Navigation vers AtsPage (Upload CV)
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(builder: (_) => const AtsPage()),
-                                          );
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const AtsPage()));
                                         } else if (i == 1) {
-                                          // Navigation vers Internship List
                                           Navigator.pushNamed(context, '/internship_splash');
                                         }
                                       });
                                     },
                                     child: Container(
-                                      decoration: const BoxDecoration(
-                                        color: Colors.transparent,
+                                      decoration: BoxDecoration(
+                                        color: _selectedIndex == i ? const Color(0xFF8B1C1C) : Colors.white,
                                         shape: BoxShape.circle,
                                       ),
                                       padding: const EdgeInsets.all(12),
                                       child: Image.asset(
-                                        i == 3
-                                            ? (_quizClicked ? 'assets/icons/cv.png' : icons[3])
-                                            : i == 1
-                                                ? (_candidatesClicked ? 'assets/icons/internship.png' : icons[1])
-                                                : i == 4
-                                                    ? (_selectedIndex == 4 ? 'assets/icons/Save icon red.png' : icons[4])
-                                                    : icons[i],
+                                        icons[i],
                                         width: 28,
-                                        color: _selectedIndex == i && i != 1 && i != 4 ? const Color(0xFF8B1C1C) : null,
+                                        color: _selectedIndex == i ? Colors.white : null,
                                       ),
                                     ),
                                   ),
                         ],
                       ),
               ),
-              // Overlay gris qui bloque uniquement le contenu principal (pas la barre)
-              if (isEditing)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 70,
-                  top: 0,
-                  child: GestureDetector(
-                    onTap: () => setState(() {
-                      isEditing = false;
-                      isFloating = false;
-                      floatingIndex = null;
-                      floatingMessage = null;
-                    }),
-                    child: Container(
-                      color: Colors.black.withOpacity(0.2),
-                    ),
-                  ),
-                ),
-              if (isEditing)
-                Positioned(
-                  bottom: 80,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF8B1C1C),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onPressed: () => setState(() {
-                        isEditing = false;
-                        isFloating = false;
-                        floatingIndex = null;
-                        floatingMessage = null;
-                      }),
-                      child: const Text('Done'),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
-        // Overlay gris pour popover ou édition, mais SOUS la popover
-        if (showPopover || isFloating)
+
+        // POPOVER
+        if (showPopover)
           GestureDetector(
-            onTap: _onCancelFloating,
-            child: Container(
-              color: Colors.black.withOpacity(0.4),
-              width: double.infinity,
-              height: double.infinity,
-            ),
+            onTap: () => setState(() => showPopover = false),
+            child: Container(color: Colors.black.withOpacity(0.4)),
           ),
-        // Popover TOUJOURS AU-DESSUS
-        if (showPopover || isFloating)
+        if (showPopover)
           Positioned(
             bottom: 70,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Material(
-                color: Colors.transparent,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF8B1C1C),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'these features will be unlocked once you become an intern .',
-                            style: TextStyle(color: Colors.white, fontSize: 13),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Project
-                              GestureDetector(
-                                child: Container(
-                                  decoration: popoverSelectedIndex == 0
-                                      ? BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                        )
-                                      : null,
-                                  padding: const EdgeInsets.all(4),
-                                  child: Column(
-                                    children: [
-                                      Opacity(
-                                        opacity: hasInternship ? 1 : 0.4,
-                                        child: Image.asset('assets/icons/project.png', width: 36, color: popoverSelectedIndex == 0 ? const Color(0xFF8B1C1C) : Colors.white),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text('Project', style: TextStyle(color: popoverSelectedIndex == 0 ? const Color(0xFF8B1C1C) : Colors.white, fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              // Tasks
-                              GestureDetector(
-                                child: Container(
-                                  decoration: popoverSelectedIndex == 1
-                                      ? BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                        )
-                                      : null,
-                                  padding: const EdgeInsets.all(4),
-                                  child: Column(
-                                    children: [
-                                      Opacity(
-                                        opacity: hasInternship ? 1 : 0.4,
-                                        child: Image.asset('assets/icons/task.png', width: 36, color: popoverSelectedIndex == 1 ? const Color(0xFF8B1C1C) : Colors.white),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text('tasks', style: TextStyle(color: popoverSelectedIndex == 1 ? const Color(0xFF8B1C1C) : Colors.white, fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              // Trophies
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    popoverSelectedIndex = 2;
-                                  });
-                                  _onSelectPopover(2);
-                                },
-                                child: Container(
-                                  decoration: popoverSelectedIndex == 2
-                                      ? BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                        )
-                                      : null,
-                                  padding: const EdgeInsets.all(4),
-                                  child: Column(
-                                    children: [
-                                      Opacity(
-                                        opacity: hasInternship ? 1 : 0.4,
-                                        child: Image.asset('assets/icons/trophy.png', width: 36, color: popoverSelectedIndex == 2 ? const Color(0xFF8B1C1C) : Colors.white),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text('trophies', style: TextStyle(color: popoverSelectedIndex == 2 ? const Color(0xFF8B1C1C) : Colors.white, fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              // Edit
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    popoverSelectedIndex = 3;
-                                  });
-                                  _onSelectPopover(3);
-                                },
-                                child: Container(
-                                  decoration: popoverSelectedIndex == 3
-                                      ? BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                        )
-                                      : null,
-                                  padding: const EdgeInsets.all(4),
-                                  child: Column(
-                                    children: [
-                                      Image.asset('assets/icons/Edit.png', width: 36, color: popoverSelectedIndex == 3 ? const Color(0xFF8B1C1C) : Colors.white),
-                                      const SizedBox(height: 4),
-                                      Text('edit bar', style: TextStyle(color: popoverSelectedIndex == 3 ? const Color(0xFF8B1C1C) : Colors.white, fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    CustomPaint(
-                      size: const Size(24, 12),
-                      painter: _PopoverArrowPainter(),
-                    ),
-                    if (floatingMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Text(
-                          floatingMessage!,
-                          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                  ],
-                ),
+            left: MediaQuery.of(context).size.width / 2 - 100,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 200,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: const Color(0xFF8B1C1C), borderRadius: BorderRadius.circular(16)),
+                child: const Text('Long press features', style: TextStyle(color: Colors.white, fontSize: 14)),
               ),
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildOfferTypeCard({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: const Color(0xFF821E23)),
+            const SizedBox(height: 8),
+            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
     );
   }
 }
