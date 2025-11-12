@@ -3,14 +3,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/task_model.dart';
+import '../../../projects/models/project_model.dart';
 import '../../providers/task_provider.dart';
 import '../widgets/task_card.dart';
 import '../widgets/task_form_dialog.dart';
+import '../../../projects/widgets/project_selector.dart';
+import '../../../../shared/data/database_helper.dart';
 import '../widgets/kanban_board.dart';
 
 /// Vue PM pour la gestion des tâches
-///
-/// C:\offre\Esprit-Inter-Link-\lib\features\projects\widgets\project_selector.dart
 /// Affichage vertical avec regroupement par status (TO_DO, DOING, DONE)
 /// FAB pour ajouter une tâche, menu edit/delete sur chaque carte
 class PMTaskView extends StatefulWidget {
@@ -28,10 +29,42 @@ class PMTaskView extends StatefulWidget {
 }
 
 class _PMTaskViewState extends State<PMTaskView> {
+  Project? _selectedProject;
+  List<Project> _projects = [];
+  bool _loadingProjects = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProjectsAndSelect();
+  }
+
+  Future<void> _loadProjectsAndSelect() async {
+    // Charger tous les projets du PM connecté
+    final db = await DatabaseHelper().database;
+    final rows = await db.query('projects');
+    final allProjects = rows.map((e) => Project(
+      id: e['id'] as int,
+      title: e['name'] as String, // ou e['title'] si c'est le champ correct
+      pmId: e['pm_id'] as int,
+      // Ajoutez les autres champs nécessaires ici
+    )).toList();
+    // Sélectionner le projet courant
+    final selected = allProjects.firstWhere(
+      (p) => p.id == widget.projectId,
+      orElse: () => Project(id: widget.projectId, title: widget.projectName, pmId: 1),
+    );
+    setState(() {
+      _projects = allProjects;
+      _selectedProject = selected;
+      _loadingProjects = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => TaskProvider()..loadTasks(projectId: widget.projectId),
+      create: (_) => TaskProvider()..loadTasks(projectId: _selectedProject?.id ?? widget.projectId),
       child: Scaffold(
         appBar: AppBar(
           title: Text('Tasks', style: TextStyle(color: Colors.white)),
@@ -53,78 +86,106 @@ class _PMTaskViewState extends State<PMTaskView> {
             ),
           ],
         ),
-        body: Consumer<TaskProvider>(
-          builder: (ctx, provider, _) {
-            if (provider.isLoading) {
-              return Center(child: CircularProgressIndicator());
-            }
-
-            if (provider.error != null) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, size: 64, color: Colors.red),
-                    SizedBox(height: 16),
-                    Text(provider.error!),
-                  ],
-                ),
-              );
-            }
-
-            if (provider.tasks.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.task_alt, size: 80, color: Colors.grey[400]),
-                    SizedBox(height: 16),
-                    Text(
-                      'No tasks yet',
-                      style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+        body: _loadingProjects
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  // Sélecteur de projet réel
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    color: Colors.grey[100],
+                    child: Builder(
+                      builder: (ctx) => ProjectSelector(
+                        projects: _projects,
+                        selectedProject: _selectedProject,
+                        onProjectSelected: (project) {
+                          setState(() {
+                            _selectedProject = project;
+                          });
+                          Provider.of<TaskProvider>(ctx, listen: false).loadTasks(projectId: project.id);
+                        },
+                        compact: true,
+                      ),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Tap + to create your first task',
-                      style: TextStyle(color: Colors.grey[500]),
+                  ),
+
+                  // Liste des tâches ou Kanban
+                  Expanded(
+                    child: Consumer<TaskProvider>(
+                      builder: (ctx, provider, _) {
+                        if (provider.isLoading) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+
+                        if (provider.error != null) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error_outline, size: 64, color: Colors.red),
+                                SizedBox(height: 16),
+                                Text(provider.error!),
+                              ],
+                            ),
+                          );
+                        }
+
+                        if (provider.tasks.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.task_alt, size: 80, color: Colors.grey[400]),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No tasks yet',
+                                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Tap + to create your first task',
+                                  style: TextStyle(color: Colors.grey[500]),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        // Responsive switch: show kanban in landscape / wide screens
+                        final mq = MediaQuery.of(context);
+                        final isWide = mq.orientation == Orientation.landscape || mq.size.width > 700;
+
+                        if (isWide) {
+                          // Kanban board
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: KanbanBoard(isPM: true, userId: _selectedProject?.pmId ?? 1),
+                          );
+                        }
+
+                        // Portrait / narrow: keep existing vertical list UI
+                        return RefreshIndicator(
+                          onRefresh: () => provider.loadTasks(projectId: _selectedProject!.id),
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(12),
+                            physics: AlwaysScrollableScrollPhysics(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildStatusSection(context, provider, TaskStatus.TO_DO),
+                                SizedBox(height: 16),
+                                _buildStatusSection(context, provider, TaskStatus.DOING),
+                                SizedBox(height: 16),
+                                _buildStatusSection(context, provider, TaskStatus.DONE),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
-              );
-            }
-
-            // Responsive switch: show kanban in landscape / wide screens
-            final mq = MediaQuery.of(context);
-            final isWide = mq.orientation == Orientation.landscape || mq.size.width > 700;
-
-            if (isWide) {
-              // Kanban board
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: KanbanBoard(isPM: true, userId: 1),
-              );
-            }
-
-            // Portrait / narrow: keep existing vertical list UI
-            return RefreshIndicator(
-              onRefresh: () => provider.loadTasks(projectId: widget.projectId),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                physics: AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatusSection(context, provider, TaskStatus.TO_DO),
-                    SizedBox(height: 16),
-                    _buildStatusSection(context, provider, TaskStatus.DOING),
-                    SizedBox(height: 16),
-                    _buildStatusSection(context, provider, TaskStatus.DONE),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            );
-          },
-        ),
         floatingActionButton: Consumer<TaskProvider>(
           builder: (ctx, provider, _) => FloatingActionButton(
             backgroundColor: const Color(0xFF8B1C1C),
@@ -134,7 +195,7 @@ class _PMTaskViewState extends State<PMTaskView> {
                 context: context,
                 builder: (_) => TaskFormDialog(
                   onSave: (task) {
-                    final toInsert = task.copyWith(projectId: widget.projectId);
+                    final toInsert = task.copyWith(projectId: _selectedProject!.id);
                     provider.addTask(toInsert);
                   },
                 ),

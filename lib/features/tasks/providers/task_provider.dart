@@ -220,7 +220,7 @@ class TaskProvider extends ChangeNotifier {
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       filtered = filtered.where((t) =>
-          t.title.toLowerCase().contains(q) || (t.description ?? '').toLowerCase().contains(q)).toList();
+      t.title.toLowerCase().contains(q) || (t.description ?? '').toLowerCase().contains(q)).toList();
     }
 
     // Filtre par status

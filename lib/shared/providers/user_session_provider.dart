@@ -1,4 +1,4 @@
-  import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_role.dart';
 
 /// Manages the current user session across the app

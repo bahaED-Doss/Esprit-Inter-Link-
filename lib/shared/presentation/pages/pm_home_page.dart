@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../features/projects/presentation/pages/project_selector_page.dart';
+import '../../../features/tasks/presentation/pages/pm_task_view.dart';
 import 'notification_page.dart';
-import '../../../features/tasks/presentation/pages/project_selector_page.dart';
 import '../../data/notification_service.dart';
 import '../../providers/user_session_provider.dart';
 import 'package:provider/provider.dart';
@@ -277,10 +278,14 @@ class _HomePageMockState extends State<_HomePageMock> {
                                     ElevatedButton(
                                       onPressed: () {
                                         if (_pmId != null) {
+                                          // TODO: Remplacer par la sélection du projet si besoin
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (context) => ProjectSelectorPage(pmId: _pmId!),
+                                              builder: (context) => PMTaskView(
+                                                projectId: 1, // <-- Remplace par l'id du projet voulu
+                                                projectName: 'Nom du projet', // <-- Remplace par le nom du projet voulu
+                                              ),
                                             ),
                                           );
                                         }
@@ -355,8 +360,6 @@ class _HomePageMockState extends State<_HomePageMock> {
               ),
             ],
           ),
-
-          // BOTTOM NAVIGATION BAR
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: (index) {

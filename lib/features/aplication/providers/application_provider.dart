@@ -13,18 +13,18 @@ class ApplicationProvider extends ChangeNotifier {
   // Internships
   List<Internship> _internships = [];
   List<Internship> _filteredInternships = [];
-  
+
   // Applications
   List<Application> _applications = [];
-  
+
   // Loading states
   bool _isLoadingInternships = false;
   bool _isLoadingApplications = false;
-  
+
   // Errors
   String? _internshipError;
   String? _applicationError;
-  
+
   // Search and filters
   String _searchQuery = '';
   InternshipType? _filterType;
@@ -198,7 +198,7 @@ class ApplicationProvider extends ChangeNotifier {
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       filtered = filtered.where((i) =>
-          i.title.toLowerCase().contains(q) ||
+      i.title.toLowerCase().contains(q) ||
           i.description.toLowerCase().contains(q) ||
           i.companyName.toLowerCase().contains(q)).toList();
     }
@@ -285,7 +285,7 @@ class ApplicationProvider extends ChangeNotifier {
 
       _applications.insert(0, inserted);
       _applicationError = null;
-      
+
       // Notify the HR who posted the internship about the new application
       try {
         final internship = await _db.getInternshipById(application.internshipId);
@@ -298,7 +298,7 @@ class ApplicationProvider extends ChangeNotifier {
             type: 'APPLICATION',
             referenceId: application.internshipId,
           );
-         }
+        }
       } catch (e) {
         print('⚠️ Failed to create HR notification for application: $e');
       }

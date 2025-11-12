@@ -46,7 +46,7 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
           children: [
             // Header avec gradient
             _buildHeader(),
-            
+
             // Liste des stages
             Expanded(
               child: Consumer<ApplicationProvider>(
@@ -195,9 +195,9 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Barre de recherche
           Container(
             decoration: BoxDecoration(
@@ -308,7 +308,7 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
                 ],
               ),
             ),
-            
+
             // Corps de la carte
             Padding(
               padding: const EdgeInsets.all(16),
@@ -326,9 +326,9 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // Infos
                   Row(
                     children: [
@@ -338,9 +338,9 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
                     ],
                   ),
 
-                   const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                   // Bouton Apply
+                  // Bouton Apply
                   Align(
                     alignment: Alignment.centerRight,
                     child: Container(
@@ -360,14 +360,14 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
                       ),
                     ),
                   ),
-                 ],
-               ),
-             ),
-           ],
-         ),
-       ),
-     );
-   }
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildInfoChip(IconData icon, String text) {
     return Row(

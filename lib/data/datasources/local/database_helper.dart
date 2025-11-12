@@ -14,39 +14,35 @@ class DatabaseHelper {
   }
 
   static Future<Database> _initDatabase() async {
-    // Utiliser un chemin accessible (dossier du projet ou Desktop)
     String dbPath;
 
     if (Platform.isWindows) {
-      // Utiliser le dossier Documents de l'utilisateur (plus accessible que Program Files)
       final userProfile = Platform.environment['USERPROFILE'];
       dbPath = join(userProfile!, 'Documents', 'EspritInterlink', dbName);
 
-      // Créer le dossier s'il n'existe pas
       final directory = Directory(dirname(dbPath));
       if (!await directory.exists()) {
         await directory.create(recursive: true);
       }
     } else {
-      // Pour mobile/autres plateformes
       final dbFolder = await getDatabasesPath();
       dbPath = join(dbFolder, dbName);
     }
 
-    print('📊 Database path: $dbPath');
+    print('Database path: $dbPath');
 
     return openDatabase(
       dbPath,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
-      version: 6, // Bumped to 6 to fix notifications table structure
+      version: 6,
     );
   }
 
   static Future<void> _onCreate(Database db, int version) async {
-    print('🔨 Creating database tables...');
+    print('Creating database tables...');
 
-    // Table users
+    // Table: users
     await db.execute('''
       CREATE TABLE users (
         id INTEGER PRIMARY KEY,
@@ -58,21 +54,28 @@ class DatabaseHelper {
       );
     ''');
 
-    // Table projects
+    // Table: projects (enhanced schema)
     await db.execute('''
       CREATE TABLE projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
+        technologies_used TEXT,
         description TEXT,
         pm_id INTEGER NOT NULL,
-        assigned_to TEXT, -- email de l'étudiant assigné
-        status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'COMPLETED', 'ARCHIVED')),
+        assigned_to TEXT,
+        status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'COMPLETED', 'ARCHIVED', 'ON_HOLD')),
+        start_date TEXT,
+        end_date TEXT,
+        company_id INTEGER,
+        student_id INTEGER,
+        milestones TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         completed_at TEXT,
         FOREIGN KEY(pm_id) REFERENCES users(id)
       );
     ''');
 
+    // Table: tasks
     await db.execute('''
       CREATE TABLE IF NOT EXISTS tasks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +94,7 @@ class DatabaseHelper {
       );
     ''');
 
-    // Table trophies (tous les trophies disponibles)
+    // Table: trophies
     await db.execute('''
       CREATE TABLE trophies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,7 +109,7 @@ class DatabaseHelper {
       );
     ''');
 
-    // Table user_trophies (trophies débloqués par les utilisateurs)
+    // Table: user_trophies
     await db.execute('''
       CREATE TABLE user_trophies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,7 +123,7 @@ class DatabaseHelper {
       );
     ''');
 
-    // Table notifications
+    // Table: notifications
     await db.execute('''
       CREATE TABLE notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -135,7 +138,7 @@ class DatabaseHelper {
       );
     ''');
 
-    // Table internships
+    // Table: internships
     await db.execute('''
       CREATE TABLE internships (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -157,7 +160,7 @@ class DatabaseHelper {
       );
     ''');
 
-    // Table applications
+    // Table: applications
     await db.execute('''
       CREATE TABLE applications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -177,73 +180,27 @@ class DatabaseHelper {
       );
     ''');
 
-    // Insérer les utilisateurs mock
+    // Insert mock data
     await _insertMockUsers(db);
-
-    // Ne plus insérer les projets mock automatiquement
-    // await _insertMockProjects(db);
-
-    // Insérer tous les trophies
     await _insertAllTrophies(db);
 
-    print('✅ Database tables created successfully!');
+    print('Database tables created successfully!');
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    print('🔄 Upgrading database from version $oldVersion to $newVersion');
-    // Migration safe: ajouter les colonnes manquantes sans faire échouer la db
+    print('Upgrading database from version $oldVersion to $newVersion');
+
     if (oldVersion < 3) {
-      try {
-        await db.execute("ALTER TABLE projects ADD COLUMN assigned_to TEXT;");
-      } catch (_) {
-        // ignore si existe déjà
-      }
-
-      // Ajouter la colonne assignedTo dans tasks pour compatibilité ascendante
-      try {
-        await db.execute("ALTER TABLE tasks ADD COLUMN assignedTo TEXT;");
-      } catch (_) {
-        // ignore si existe déjà
-      }
+      try { await db.execute("ALTER TABLE projects ADD COLUMN assigned_to TEXT;"); } catch (_) {}
+      try { await db.execute("ALTER TABLE tasks ADD COLUMN assignedTo TEXT;"); } catch (_) {}
     }
 
-    // Ajouter la colonne pinned si on migre depuis <4
     if (oldVersion < 4) {
-      try {
-        await db.execute("ALTER TABLE tasks ADD COLUMN pinned INTEGER DEFAULT 0;");
-      } catch (_) {
-        // ignore si existe déjà
-      }
+      try { await db.execute("ALTER TABLE tasks ADD COLUMN pinned INTEGER DEFAULT 0;"); } catch (_) {}
     }
 
-    // S'assurer que la table notifications existe avec la bonne structure
-    if (oldVersion < 6) {
-      try {
-        // Supprimer l'ancienne table notifications si elle existe
-        await db.execute('DROP TABLE IF EXISTS notifications');
-
-        // Recréer avec la nouvelle structure
-        await db.execute('''
-          CREATE TABLE notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            message TEXT NOT NULL,
-            type TEXT DEFAULT 'SYSTEM',
-            reference_id INTEGER,
-            is_read INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-          );
-        ''');
-        print('✅ Notifications table recreated with correct structure');
-      } catch (e) {
-        print('⚠️ Error recreating notifications table: $e');
-      }
-    }
-
-    // Ajouter les tables internships et applications si on migre depuis <5
     if (oldVersion < 5) {
+      try { await db.execute("ALTER TABLE projects ADD COLUMN technologies_used TEXT;"); } catch (_) {}
       try {
         await db.execute('''
           CREATE TABLE IF NOT EXISTS internships (
@@ -265,7 +222,6 @@ class DatabaseHelper {
             FOREIGN KEY(hrId) REFERENCES users(id) ON DELETE CASCADE
           );
         ''');
-
         await db.execute('''
           CREATE TABLE IF NOT EXISTS applications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -284,48 +240,100 @@ class DatabaseHelper {
             FOREIGN KEY(studentId) REFERENCES users(id) ON DELETE CASCADE
           );
         ''');
-        print('✅ Internships and applications tables added');
       } catch (e) {
-        print('⚠️ Error creating internships/applications tables: $e');
+        print('Error adding internships/applications: $e');
       }
     }
+
+    if (oldVersion < 6) {
+      try {
+        await db.execute('DROP TABLE IF EXISTS notifications;');
+        await db.execute('''
+          CREATE TABLE notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            type TEXT DEFAULT 'SYSTEM',
+            reference_id INTEGER,
+            is_read INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+          );
+        ''');
+
+        // Migrate projects table
+        final tbl = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'");
+        if (tbl.isNotEmpty) {
+          await db.execute('ALTER TABLE projects RENAME TO projects_old;');
+          await db.execute('''
+            CREATE TABLE projects (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              technologies_used TEXT,
+              description TEXT,
+              pm_id INTEGER NOT NULL,
+              assigned_to TEXT,
+              status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'COMPLETED', 'ARCHIVED', 'ON_HOLD')),
+              start_date TEXT,
+              end_date TEXT,
+              company_id INTEGER,
+              student_id INTEGER,
+              milestones TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              completed_at TEXT,
+              FOREIGN KEY(pm_id) REFERENCES users(id)
+            );
+          ''');
+
+          final oldCols = (await db.rawQuery("PRAGMA table_info('projects_old')"))
+              .map((r) => r['name'] as String)
+              .toList();
+          final colsToCopy = ['id', 'name', 'technologies_used', 'description', 'pm_id', 'assigned_to', 'status',
+            'start_date', 'end_date', 'company_id', 'student_id', 'milestones', 'created_at', 'completed_at']
+              .where((c) => oldCols.contains(c))
+              .join(', ');
+
+          if (colsToCopy.isNotEmpty) {
+            await db.execute('INSERT INTO projects ($colsToCopy) SELECT $colsToCopy FROM projects_old;');
+          }
+          await db.execute('DROP TABLE IF EXISTS projects_old;');
+        }
+      } catch (e) {
+        print('Migration v6 failed: $e');
+      }
+    }
+
+    // Ensure notifications table exists with correct schema
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          type TEXT DEFAULT 'SYSTEM',
+          reference_id INTEGER,
+          is_read INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+      ''');
+    } catch (_) {}
   }
 
+  // === MOCK DATA ===
   static Future<void> _insertMockUsers(Database db) async {
-    await db.insert('users', {
-      'id': 1,
-      'email': 'student@esprit.tn',
-      'name': 'Student User',
-      'role': 'STUDENT',
-      'internship_status': 'CANDIDATE' // Pas encore intern
-    });
-    await db.insert('users', {
-      'id': 2,
-      'email': 'pm@esprit.tn',
-      'name': 'Project Manager',
-      'role': 'PM',
-      'internship_status': 'CANDIDATE' // Ignoré pour PM
-    });
-    await db.insert('users', {
-      'id': 3,
-      'email': 'hr@esprit.tn',
-      'name': 'HR Manager',
-      'role': 'HR',
-      'internship_status': 'CANDIDATE' // Ignoré pour HR
-    });
-    await db.insert('users', {
-      'id': 4,
-      'email': 'student2@esprit.tn',
-      'name': 'Test Student',
-      'role': 'STUDENT',
-      'internship_status': 'CANDIDATE' // Nouveau student pour les tests
-    });
-    print('👥 Mock users inserted: Student (1), PM (2), HR (3), Test Student (4)');
+    await db.insert('users', {'id': 1, 'email': 'student@esprit.tn', 'name': 'Student User', 'role': 'STUDENT', 'internship_status': 'CANDIDATE'});
+    await db.insert('users', {'id': 2, 'email': 'pm@esprit.tn', 'name': 'Project Manager', 'role': 'PM'});
+    await db.insert('users', {'id': 3, 'email': 'hr@esprit.tn', 'name': 'HR Manager', 'role': 'HR'});
+    await db.insert('users', {'id': 4, 'email': 'student2@esprit.tn', 'name': 'Test Student', 'role': 'STUDENT', 'internship_status': 'CANDIDATE'});
+    print('Mock users inserted');
   }
 
   static Future<void> _insertAllTrophies(Database db) async {
-    // Student trophies
-    final studentTrophies = [
+    final trophies = [
+      // Student
       {'name': 'Profile Pioneer', 'description': 'Profile Completed', 'role': 'STUDENT', 'xp': 100, 'trigger_type': 'PROFILE_COMPLETE', 'trigger_value': 1},
       {'name': 'Welcome Aboard', 'description': 'You\'re Officially an Intern', 'role': 'STUDENT', 'xp': 100, 'trigger_type': 'BECOME_INTERN', 'trigger_value': 1},
       {'name': 'Task Warrior', 'description': 'Completed 5 Tasks', 'role': 'STUDENT', 'xp': 200, 'trigger_type': 'TASKS_COMPLETED', 'trigger_value': 5},
@@ -333,10 +341,7 @@ class DatabaseHelper {
       {'name': 'Quiz Master', 'description': 'Completed 3 Quizzes', 'role': 'STUDENT', 'xp': 150, 'trigger_type': 'QUIZZES_COMPLETED', 'trigger_value': 3},
       {'name': 'First Week Champion', 'description': 'Survived Your First Week', 'role': 'STUDENT', 'xp': 175, 'trigger_type': 'FIRST_WEEK_COMPLETE', 'trigger_value': 1},
       {'name': 'Internship Legend', 'description': 'Perfect Internship Completion', 'role': 'STUDENT', 'xp': 500, 'trigger_type': 'INTERNSHIP_COMPLETE', 'trigger_value': 1},
-    ];
-
-    // PM trophies
-    final pmTrophies = [
+      // PM
       {'name': 'Profile Pioneer', 'description': 'Profile Completed', 'role': 'PM', 'xp': 100, 'trigger_type': 'PROFILE_COMPLETE', 'trigger_value': 1},
       {'name': 'Project Initiator', 'description': 'Created Your First Project', 'role': 'PM', 'xp': 200, 'trigger_type': 'PROJECTS_CREATED', 'trigger_value': 1},
       {'name': 'Project Architect', 'description': 'Created 3 Projects', 'role': 'PM', 'xp': 300, 'trigger_type': 'PROJECTS_CREATED', 'trigger_value': 3},
@@ -344,10 +349,7 @@ class DatabaseHelper {
       {'name': 'Delegation Expert', 'description': 'Created 5 Tasks', 'role': 'PM', 'xp': 250, 'trigger_type': 'TASKS_CREATED', 'trigger_value': 5},
       {'name': 'Project Finisher', 'description': 'Completed Your First Project', 'role': 'PM', 'xp': 350, 'trigger_type': 'PROJECTS_COMPLETED', 'trigger_value': 1},
       {'name': 'Project Legend', 'description': 'Completed 3 Projects', 'role': 'PM', 'xp': 500, 'trigger_type': 'PROJECTS_COMPLETED', 'trigger_value': 3},
-    ];
-
-    // HR trophies
-    final hrTrophies = [
+      // HR
       {'name': 'Profile Pioneer', 'description': 'Profile Completed', 'role': 'HR', 'xp': 100, 'trigger_type': 'PROFILE_COMPLETE', 'trigger_value': 1},
       {'name': 'Company Champion', 'description': 'Company Profile Complete', 'role': 'HR', 'xp': 150, 'trigger_type': 'COMPANY_PROFILE_COMPLETE', 'trigger_value': 1},
       {'name': 'First Opportunity', 'description': 'Posted Your First Offer', 'role': 'HR', 'xp': 200, 'trigger_type': 'OFFERS_POSTED', 'trigger_value': 1},
@@ -356,172 +358,78 @@ class DatabaseHelper {
       {'name': 'Team Builder', 'description': 'Built a Team of 5', 'role': 'HR', 'xp': 400, 'trigger_type': 'STUDENTS_ACCEPTED', 'trigger_value': 5},
     ];
 
-    for (var trophy in [...studentTrophies, ...pmTrophies, ...hrTrophies]) {
-      await db.insert('trophies', trophy);
+    for (var t in trophies) {
+      await db.insert('trophies', t);
     }
-
-    print('🏆 All trophies inserted successfully!');
+    print('All trophies inserted');
   }
 
-  // À appeler au démarrage de l'app pour insérer les projets mock si la table est vide
+  // === MOCK PROJECTS ===
   static Future<void> initializeMockProjectsIfNeeded() async {
     final db = await database;
-    final count = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM projects')
-    );
+    final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM projects')) ?? 0;
     if (count == 0) {
-      await db.insert('projects', {
-        'id': 1,
-        'name': 'Mobile Application',
-        'description': 'Flutter internship management app',
-        'pm_id': 2,
-        'assigned_to': 'student@esprit.tn',
-        'status': 'ACTIVE'
-      });
-      await db.insert('projects', {
-        'id': 2,
-        'name': 'Web Dashboard',
-        'description': 'React admin panel for HR',
-        'pm_id': 2,
-        'assigned_to': 'student@esprit.tn',
-        'status': 'ACTIVE'
-      });
-      await db.insert('projects', {
-        'id': 3,
-        'name': 'Backend API',
-        'description': 'Spring Boot REST API',
-        'pm_id': 2,
-        'assigned_to': 'student@esprit.tn',
-        'status': 'ACTIVE'
-      });
-      print('📁 Mock projects inserted at app startup');
+      await db.insert('projects', {'id': 1, 'name': 'Mobile Application', 'description': 'Flutter internship app', 'pm_id': 2, 'assigned_to': 'student@esprit.tn', 'status': 'ACTIVE'});
+      await db.insert('projects', {'id': 2, 'name': 'Web Dashboard', 'description': 'React admin panel', 'pm_id': 2, 'assigned_to': 'student@esprit.tn', 'status': 'ACTIVE'});
+      await db.insert('projects', {'id': 3, 'name': 'Backend API', 'description': 'Spring Boot API', 'pm_id': 2, 'assigned_to': 'student@esprit.tn', 'status': 'ACTIVE'});
+      print('Mock projects inserted');
     }
   }
 
-  // Méthode pour mettre à jour le statut internship_status d'un étudiant
-  static Future<void> updateStudentInternshipStatus(String email, String newStatus) async {
+  // === UTILS ===
+  static Future<void> updateStudentInternshipStatus(String email, String status) async {
     final db = await database;
-    await db.update(
-      'users',
-      {'internship_status': newStatus},
-      where: 'email = ?',
-      whereArgs: [email],
-    );
-    print('🔄 Student $email internship_status updated to $newStatus');
+    await db.update('users', {'internship_status': status}, where: 'email = ?', whereArgs: [email]);
   }
 
-  /// Assigne le premier projet disponible (du PM donné) à l'étudiant (par email).
-  /// Retourne l'id du projet assigné ou null si aucun projet disponible.
-  static Future<int?> assignFirstAvailableProjectToStudent(String studentEmail, {int pmId = 2}) async {
+  static Future<int?> assignFirstAvailableProjectToStudent(String email, {int pmId = 2}) async {
     final db = await database;
-
-    // Chercher un projet non-assigné du PM
-    final candidates = await db.query(
-      'projects',
-      where: '(assigned_to IS NULL OR assigned_to = ?) AND pm_id = ?',
-      whereArgs: ['', pmId],
-      orderBy: 'id ASC',
-      limit: 1,
-    );
-
-    if (candidates.isEmpty) {
-      // fallback: prendre premier projet du PM même s'il est assigné
-      final fallback = await db.query('projects', where: 'pm_id = ?', whereArgs: [pmId], orderBy: 'id ASC', limit: 1);
-      if (fallback.isEmpty) return null;
-      final id = fallback.first['id'] as int?;
-      if (id == null) return null;
-      await db.update('projects', {'assigned_to': studentEmail}, where: 'id = ?', whereArgs: [id]);
-      print('🔧 Assigned (fallback) project id $id to $studentEmail');
-      return id;
-    }
-
-    final id = candidates.first['id'] as int?;
-    if (id == null) return null;
-    await db.update('projects', {'assigned_to': studentEmail}, where: 'id = ?', whereArgs: [id]);
-    print('🔧 Assigned project id $id to $studentEmail');
+    final candidates = await db.query('projects', where: '(assigned_to IS NULL OR assigned_to = ?) AND pm_id = ?', whereArgs: ['', pmId], limit: 1);
+    final row = candidates.isNotEmpty ? candidates.first : (await db.query('projects', where: 'pm_id = ?', whereArgs: [pmId], limit: 1)).firstOrNull;
+    if (row == null) return null;
+    final id = row['id'] as int;
+    await db.update('projects', {'assigned_to': email}, where: 'id = ?', whereArgs: [id]);
     return id;
   }
 
-  /// Désassigne tous les projets assignés à l'étudiant (utilisé lors du rollback ou du passage de intern -> candidate)
-  static Future<int> unassignProjectsFromStudent(String studentEmail) async {
+  static Future<int> unassignProjectsFromStudent(String email) async {
     final db = await database;
-    final res = await db.update('projects', {'assigned_to': ''}, where: 'assigned_to = ?', whereArgs: [studentEmail]);
-    print('🔄 Unassigned $res project(s) from $studentEmail');
-    return res;
+    return await db.update('projects', {'assigned_to': ''}, where: 'assigned_to = ?', whereArgs: [email]);
   }
 
-  // Nouvelle méthode : récupérer le projet assigné à un étudiant via son email
   static Future<Map<String, dynamic>?> getProjectAssignedToStudent(String email) async {
     final db = await database;
-    final rows = await db.query(
-      'projects',
-      where: 'assigned_to = ?',
-      whereArgs: [email],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return rows.first;
+    final rows = await db.query('projects', where: 'assigned_to = ?', whereArgs: [email], limit: 1);
+    return rows.isEmpty ? null : rows.first;
   }
 
-  // Nouvelle méthode : récupérer les tâches d'un projet par projectId
   static Future<List<Map<String, dynamic>>> getTasksByProjectId(int projectId) async {
     final db = await database;
-    final tasks = await db.query(
-      'tasks',
-      where: 'projectId = ?',
-      whereArgs: [projectId],
-      orderBy: 'status ASC, deadline ASC',
-    );
-    return tasks;
+    return await db.query('tasks', where: 'projectId = ?', whereArgs: [projectId], orderBy: 'status ASC, deadline ASC');
   }
 
-  // Nouvelle méthode : récupérer directement les tâches d'un étudiant via son email
-  // (cherche le projet assigné à l'email, puis récupère ses tâches)
   static Future<List<Map<String, dynamic>>> getTasksForStudentByEmail(String email) async {
     final project = await getProjectAssignedToStudent(email);
-    if (project == null) return [];
-    final projectId = project['id'] as int;
-    return await getTasksByProjectId(projectId);
+    return project == null ? [] : await getTasksByProjectId(project['id'] as int);
   }
 
-  // =======================
-  // Notification utilities
-  // =======================
-
-  static Future<int> insertNotification({
-    required int userId,
-    required String title,
-    required String message,
-    String type = 'SYSTEM',
-    int? referenceId,
-  }) async {
+  // === NOTIFICATIONS ===
+  static Future<int> insertNotification({required int userId, required String title, required String message, String type = 'SYSTEM', int? referenceId}) async {
     final db = await database;
     return await db.insert('notifications', {
-      'user_id': userId,
-      'title': title,
-      'message': message,
-      'type': type,
-      'reference_id': referenceId,
-      'is_read': 0,
-      'created_at': DateTime.now().toIso8601String(),
+      'user_id': userId, 'title': title, 'message': message, 'type': type, 'reference_id': referenceId, 'is_read': 0, 'created_at': DateTime.now().toIso8601String()
     });
   }
 
   static Future<List<Map<String, dynamic>>> getNotificationsForUser(int userId, {bool unreadOnly = false}) async {
     final db = await database;
     final where = unreadOnly ? 'user_id = ? AND is_read = 0' : 'user_id = ?';
-    final rows = await db.query(
-      'notifications',
-      where: where,
-      whereArgs: [userId],
-      orderBy: 'created_at DESC',
-    );
-    return rows;
+    return await db.query('notifications', where: where, whereArgs: [userId], orderBy: 'created_at DESC');
   }
 
   static Future<int> getUnreadNotificationCount(int userId) async {
     final db = await database;
-    final res = await db.rawQuery('SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND is_read = 0', [userId]);
+    final res = await db.rawQuery('SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0', [userId]);
     return Sqflite.firstIntValue(res) ?? 0;
   }
 
@@ -536,92 +444,64 @@ class DatabaseHelper {
     return await db.update('notifications', {'is_read': 1}, where: 'id = ?', whereArgs: [notificationId]);
   }
 
-  // ==================
-  // Project/user utils
-  // ==================
-
-  static Future<Map<String, dynamic>?> getProjectById(int projectId) async {
+  // === PROJECT UTILS ===
+  static Future<Map<String, dynamic>?> getProjectById(int id) async {
     final db = await database;
-    final rows = await db.query('projects', where: 'id = ?', whereArgs: [projectId], limit: 1);
-    if (rows.isEmpty) return null;
-    return rows.first;
+    final rows = await db.query('projects', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : rows.first;
   }
 
   static Future<int?> findUserIdByEmail(String email) async {
     final db = await database;
     final rows = await db.query('users', where: 'email = ?', whereArgs: [email], limit: 1);
-    if (rows.isEmpty) return null;
-    return rows.first['id'] as int?;
+    return rows.isEmpty ? null : rows.first['id'] as int?;
   }
 
   static Future<int?> getPMUserIdForProject(int projectId) async {
     final project = await getProjectById(projectId);
-    if (project == null) return null;
-    return project['pm_id'] as int?;
+    return project?['pm_id'] as int?;
   }
 
   static Future<int> countOpenTasksForProject(int projectId) async {
     final db = await database;
-    final res = await db.rawQuery(
-      "SELECT COUNT(*) as c FROM tasks WHERE projectId = ? AND status IN ('TO_DO','DOING')",
-      [projectId],
-    );
+    final res = await db.rawQuery("SELECT COUNT(*) FROM tasks WHERE projectId = ? AND status IN ('TO_DO','DOING')", [projectId]);
     return Sqflite.firstIntValue(res) ?? 0;
   }
 
-  static Future<bool> hasUnreadEmptyProjectNotification(int pmUserId, int projectId) async {
+  static Future<bool> hasUnreadEmptyProjectNotification(int pmId, int projectId) async {
     final db = await database;
-    final res = await db.query(
-      'notifications',
-      where: 'user_id = ? AND type = ? AND reference_id = ? AND is_read = 0',
-      whereArgs: [pmUserId, 'PROJECT', projectId],
-      limit: 1,
-    );
+    final res = await db.query('notifications', where: 'user_id = ? AND type = ? AND reference_id = ? AND is_read = 0', whereArgs: [pmId, 'PROJECT', projectId], limit: 1);
     return res.isNotEmpty;
   }
 
-  // Méthodes utilitaires
+  // === DEBUG ===
   static Future<void> resetDatabase() async {
-    final dbPath = await _initDatabase();
-    await deleteDatabase(dbPath.path);
+    final db = await database;
+    await deleteDatabase(db.path);
     _database = null;
-    await database; // Recréer
+    await database;
   }
 
-  static Future<String> getDatabasePath() async {
-    final db = await database;
-    return db.path;
-  }
+  static Future<String> getDatabasePath() async => (await database).path;
 
   static Future<List<Map<String, dynamic>>> getTables() async {
-    final db = await database;
-    return await db.rawQuery(
-      "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;"
-    );
+    return await (await database).rawQuery("SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
   }
 
   static Future<void> printDatabaseInfo() async {
     final path = await getDatabasePath();
     final tables = await getTables();
-
-    print('\n' + '=' * 60);
-    print('📊 DATABASE INFORMATION');
-    print('=' * 60);
-    print('📍 Location: $path');
-    print('📋 Tables (${tables.length}):');
-    for (var table in tables) {
-      final name = table['name'];
-      final db = await database;
-      final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM $name'));
-      print('   - $name ($count rows)');
+    print('\nDATABASE INFO\nLocation: $path\nTables:');
+    for (var t in tables) {
+      final name = t['name'];
+      final count = Sqflite.firstIntValue(await (await database).rawQuery('SELECT COUNT(*) FROM $name')) ?? 0;
+      print('  • $name ($count rows)');
     }
-    print('=' * 60 + '\n');
+    print('');
   }
 
-  static Future<Map<String, dynamic>?> getUserById(int userId) async {
-    final db = await database;
-    final rows = await db.query('users', where: 'id = ?', whereArgs: [userId], limit: 1);
-    if (rows.isEmpty) return null;
-    return rows.first;
+  static Future<Map<String, dynamic>?> getUserById(int id) async {
+    final rows = await (await database).query('users', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : rows.first;
   }
 }

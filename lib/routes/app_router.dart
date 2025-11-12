@@ -4,6 +4,7 @@ import 'route_names.dart';
 import '../shared/presentation/pages/SplashScreen.dart';
 import '../features/home/pages/home_page.dart';
 import '../features/trophies/presentation/pages/trophies_page.dart';
+import '../features/projects/presentation/pages/pm_projects_page.dart'; // ← ADDED
 
 /// App-wide routing configuration
 /// Your team can add their feature routes here
@@ -71,11 +72,19 @@ class AppRouter {
       // TODO: Add edit profile
       // TODO: Add settings
       // TODO: Add notifications
+
       // Trophies Page
       GoRoute(
         path: '/trophies',
         name: 'trophies',
         builder: (context, state) => const TrophiesPage(),
+      ),
+
+      // PM Projects Page (from project+task branch)
+      GoRoute(
+        path: RouteNames.pmProjects,
+        name: 'pm_projects',
+        builder: (context, state) => const PMProjectsPage(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

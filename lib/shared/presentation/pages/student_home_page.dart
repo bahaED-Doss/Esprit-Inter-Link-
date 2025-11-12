@@ -217,285 +217,285 @@ class _StudentHomePageState extends State<StudentHomePage> {
           body: _selectedIndex == 4
               ? SavedOffersPage(savedOffers: savedOffers)
               : Column(
-                  children: [
-                    // TOP BAR
-                    SafeArea(
-                      top: true,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        color: const Color(0xFF821E23),
+            children: [
+              // TOP BAR
+              SafeArea(
+                top: true,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  color: const Color(0xFF821E23),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/role_select', (r) => false),
+                        child: const CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/icons/avatar.png')),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            children: [
+                              SizedBox(width: 12),
+                              Icon(Icons.search, color: Colors.white70, size: 20),
+                              SizedBox(width: 8),
+                              Expanded(child: Text('Search', style: TextStyle(color: Colors.white70, fontSize: 16))),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () async {
+                          if (_studentId != null) {
+                            final result = await Navigator.push<bool?>(
+                              context,
+                              MaterialPageRoute(builder: (_) => NotificationPage(userId: _studentId!)),
+                            );
+                            if (result == true) {
+                              await _initStudentData();
+                            } else {
+                              await _loadUnreadCount();
+                            }
+                          }
+                        },
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.notifications_none, color: Colors.white, size: 28),
+                            if (_unreadCount > 0)
+                              Positioned(
+                                right: -6,
+                                top: -6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
+                                  child: Text(
+                                    _unreadCount > 9 ? '9+' : '$_unreadCount',
+                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // MAIN CONTENT - NEW DESIGN
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        greeting,
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E)),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // BANNER WITH IMAGE OVERLAY
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.asset(
+                                'assets/images/hmpimg.png',
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (c, e, s) => Container(
+                                  color: const Color(0xFFEFEFEF),
+                                  child: const Center(
+                                    child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                                  ),
+                                ),
+                              ),
+                              // Dark overlay for better text visibility
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.black.withValues(alpha: 0.5),
+                                      Colors.black.withValues(alpha: 0.1),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Text and button overlay
+                              Positioned(
+                                top: 20,
+                                left: 20,
+                                right: 20,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isStudent ? 'Generate your Best\nResume/CV' : 'Time to shine, intern!\ncheck your tasks',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        if (isStudent) {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const AtsPage()));
+                                        } else {
+                                          if (_assignedProjectId != null && _studentId != null) {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => StudentTaskView(
+                                                  projectId: _assignedProjectId!,
+                                                  userId: _studentId!,
+                                                  projectName: _assignedProjectName ?? 'Project',
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('No project assigned yet.')),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: const Color(0xFF821E23),
+                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        isStudent ? 'Try Now' : 'Click here',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+                      const Text('Find Your Internship', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
+                      const SizedBox(height: 16),
+
+                      // 3 Offer Type Cards
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildOfferTypeCard(
+                            icon: Icons.document_scanner,
+                            label: 'Remote ',
+                            color: const Color(0xFFE3F2FD),
+                            onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                          ),
+                          _buildOfferTypeCard(
+                            icon: Icons.work,
+                            label: 'Full Time',
+                            color: const Color(0xFFEDE7F6),
+                            onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                          ),
+                          _buildOfferTypeCard(
+                            icon: Icons.schedule,
+                            label: 'Part Time',
+                            color: const Color(0xFFFFF3E0),
+                            onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 32),
+                      const Text('Recent offers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
+                      const SizedBox(height: 16),
+
+                      // Recent Offer Card
+                      ..._recentOffers.map((offer) => Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 4))
+                          ],
+                        ),
                         child: Row(
                           children: [
-                            GestureDetector(
-                              onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/role_select', (r) => false),
-                              child: const CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/icons/avatar.png')),
+                            CircleAvatar(
+                              backgroundColor: const Color(0xFFF1F1F1),
+                              child: Text(offer['logo'], style: const TextStyle(color: Color(0xFF821E23), fontWeight: FontWeight.bold)),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Container(
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    SizedBox(width: 12),
-                                    Icon(Icons.search, color: Colors.white70, size: 20),
-                                    SizedBox(width: 8),
-                                    Expanded(child: Text('Search', style: TextStyle(color: Colors.white70, fontSize: 16))),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            GestureDetector(
-                              onTap: () async {
-                                if (_studentId != null) {
-                                  final result = await Navigator.push<bool?>(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => NotificationPage(userId: _studentId!)),
-                                  );
-                                  if (result == true) {
-                                    await _initStudentData();
-                                  } else {
-                                    await _loadUnreadCount();
-                                  }
-                                }
-                              },
-                              child: Stack(
-                                clipBehavior: Clip.none,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.notifications_none, color: Colors.white, size: 28),
-                                  if (_unreadCount > 0)
-                                    Positioned(
-                                      right: -6,
-                                      top: -6,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
-                                        child: Text(
-                                          _unreadCount > 9 ? '9+' : '$_unreadCount',
-                                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
-                                        ),
-                                      ),
-                                    ),
+                                  Text(offer['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                                  Text(offer['company'], style: const TextStyle(fontSize: 14, color: Color(0xFF666666))),
+                                  const SizedBox(height: 4),
+                                  Text(offer['location'], style: const TextStyle(fontSize: 12, color: Color(0xFF999999))),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // MAIN CONTENT - NEW DESIGN
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              greeting,
-                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E)),
-                            ),
-                            const SizedBox(height: 16),
-
-                            // BANNER WITH IMAGE OVERLAY
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: AspectRatio(
-                                aspectRatio: 16 / 9,
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Image.asset(
-                                      'assets/images/hmpimg.png',
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      errorBuilder: (c, e, s) => Container(
-                                        color: const Color(0xFFEFEFEF),
-                                        child: const Center(
-                                          child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
-                                        ),
-                                      ),
-                                    ),
-                                    // Dark overlay for better text visibility
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            Colors.black.withValues(alpha: 0.5),
-                                            Colors.black.withValues(alpha: 0.1),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    // Text and button overlay
-                                    Positioned(
-                                      top: 20,
-                                      left: 20,
-                                      right: 20,
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            isStudent ? 'Generate your Best\nResume/CV' : 'Time to shine, intern!\ncheck your tasks',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.w800,
-                                              height: 1.2,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              if (isStudent) {
-                                                Navigator.push(context, MaterialPageRoute(builder: (_) => const AtsPage()));
-                                              } else {
-                                                if (_assignedProjectId != null && _studentId != null) {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) => StudentTaskView(
-                                                        projectId: _assignedProjectId!,
-                                                        userId: _studentId!,
-                                                        projectName: _assignedProjectName ?? 'Project',
-                                                      ),
-                                                    ),
-                                                  );
-                                                } else {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(content: Text('No project assigned yet.')),
-                                                  );
-                                                }
-                                              }
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.white,
-                                              foregroundColor: const Color(0xFF821E23),
-                                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              isStudent ? 'Try Now' : 'Click here',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 32),
-                            const Text('Find Your Internship', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
-                            const SizedBox(height: 16),
-
-                            // 3 Offer Type Cards
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            Column(
                               children: [
-                                _buildOfferTypeCard(
-                                  icon: Icons.document_scanner,
-                                  label: 'Remote ',
-                                  color: const Color(0xFFE3F2FD),
-                                  onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                                Text(offer['salary'], style: const TextStyle(fontSize: 12, color: Color(0xFF821E23), fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF0E6),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Text(offer['type'], style: const TextStyle(fontSize: 12, color: Color(0xFF821E23))),
                                 ),
-                                _buildOfferTypeCard(
-                                  icon: Icons.work,
-                                  label: 'Full Time',
-                                  color: const Color(0xFFEDE7F6),
-                                  onTap: () => Navigator.pushNamed(context, '/internship_splash'),
-                                ),
-                                _buildOfferTypeCard(
-                                  icon: Icons.schedule,
-                                  label: 'Part Time',
-                                  color: const Color(0xFFFFF3E0),
-                                  onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                                const SizedBox(height: 8),
+                                ElevatedButton(
+                                  onPressed: () {},
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF821E23),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                    minimumSize: const Size(80, 32),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  child: const Text('Apply', style: TextStyle(fontSize: 12)),
                                 ),
                               ],
                             ),
-
-                            const SizedBox(height: 32),
-                            const Text('Recent offers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
-                            const SizedBox(height: 16),
-
-                            // Recent Offer Card
-                            ..._recentOffers.map((offer) => Container(
-                                  margin: const EdgeInsets.only(bottom: 16),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 4))
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: const Color(0xFFF1F1F1),
-                                        child: Text(offer['logo'], style: const TextStyle(color: Color(0xFF821E23), fontWeight: FontWeight.bold)),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(offer['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                                            Text(offer['company'], style: const TextStyle(fontSize: 14, color: Color(0xFF666666))),
-                                            const SizedBox(height: 4),
-                                            Text(offer['location'], style: const TextStyle(fontSize: 12, color: Color(0xFF999999))),
-                                          ],
-                                        ),
-                                      ),
-                                      Column(
-                                        children: [
-                                          Text(offer['salary'], style: const TextStyle(fontSize: 12, color: Color(0xFF821E23), fontWeight: FontWeight.w600)),
-                                          const SizedBox(height: 4),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFFFF0E6),
-                                              borderRadius: BorderRadius.circular(16),
-                                            ),
-                                            child: Text(offer['type'], style: const TextStyle(fontSize: 12, color: Color(0xFF821E23))),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          ElevatedButton(
-                                            onPressed: () {},
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF821E23),
-                                              foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                              minimumSize: const Size(80, 32),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            ),
-                                            child: const Text('Apply', style: TextStyle(fontSize: 12)),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                )),
                           ],
                         ),
-                      ),
-                    ),
-                  ],
+                      )),
+                    ],
+                  ),
                 ),
+              ),
+            ],
+          ),
 
           // BOTTOM NAVIGATION BAR
           bottomNavigationBar: Stack(
@@ -511,89 +511,96 @@ class _StudentHomePageState extends State<StudentHomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 child: isEditing
                     ? Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(icons.length, (i) {
-                          return Draggable<int>(
-                            data: i,
-                            feedback: CircleAvatar(
-                              backgroundColor: Colors.white,
-                              child: Image.asset(icons[i], width: 28),
-                            ),
-                            childWhenDragging: Opacity(
-                              opacity: 0.3,
-                              child: CircleAvatar(
-                                backgroundColor: Colors.white,
-                                child: Image.asset(icons[i], width: 28),
-                              ),
-                            ),
-                            child: DragTarget<int>(
-                              onAccept: (fromIndex) {
-                                setState(() {
-                                  final tmp = icons[fromIndex];
-                                  icons[fromIndex] = icons[i];
-                                  icons[i] = tmp;
-                                });
-                              },
-                              builder: (context, candidateData, rejectedData) => CircleAvatar(
-                                backgroundColor: Colors.white,
-                                child: Image.asset(icons[i], width: 28),
-                              ),
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(icons.length, (i) {
+                    return Draggable<int>(
+                      data: i,
+                      feedback: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        child: Image.asset(icons[i], width: 28),
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.3,
+                        child: CircleAvatar(
+                          backgroundColor: Colors.white,
+                          child: Image.asset(icons[i], width: 28),
+                        ),
+                      ),
+                      child: DragTarget<int>(
+                        onAccept: (fromIndex) {
+                          setState(() {
+                            final tmp = icons[fromIndex];
+                            icons[fromIndex] = icons[i];
+                            icons[i] = tmp;
+                          });
+                        },
+                        builder: (context, candidateData, rejectedData) => CircleAvatar(
+                          backgroundColor: Colors.white,
+                          child: Image.asset(icons[i], width: 28),
+                        ),
+                      ),
+                    );
+                  }),
+                )
+                    : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    for (int i = 0; i < icons.length; i++)
+                      i == 2
+                          ? GestureDetector(
+                        onLongPressStart: _onLongPressStartMiddleButton,
+                        onLongPressMoveUpdate: (details) => _onLongPressMoveUpdateMiddleButton(details, context),
+                        onLongPressEnd: _onLongPressEndMiddleButton,
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Long press for more features'),
+                              duration: Duration(seconds: 2),
                             ),
                           );
-                        }),
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _selectedIndex == i ? const Color(0xFF8B1C1C) : Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2)),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          child: Image.asset(
+                            icons[i],
+                            width: 32,
+                            color: _selectedIndex == i ? Colors.white : null,
+                          ),
+                        ),
                       )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          for (int i = 0; i < icons.length; i++)
-                            i == 2
-                                ? GestureDetector(
-                                    onLongPressStart: _onLongPressStartMiddleButton,
-                                    onLongPressMoveUpdate: (details) => _onLongPressMoveUpdateMiddleButton(details, context),
-                                    onLongPressEnd: _onLongPressEndMiddleButton,
-                                    onTap: null,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: _selectedIndex == i ? const Color(0xFF8B1C1C) : Colors.white,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2)),
-                                        ],
-                                      ),
-                                      padding: const EdgeInsets.all(12),
-                                      child: Image.asset(
-                                        icons[i],
-                                        width: 32,
-                                        color: _selectedIndex == i ? Colors.white : null,
-                                      ),
-                                    ),
-                                  )
-                                : GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _selectedIndex = i;
-                                        if (i == 3) {
-                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const AtsPage()));
-                                        } else if (i == 1) {
-                                          Navigator.pushNamed(context, '/internship_splash');
-                                        }
-                                      });
-                                    },
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: _selectedIndex == i ? const Color(0xFF8B1C1C) : Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      padding: const EdgeInsets.all(12),
-                                      child: Image.asset(
-                                        icons[i],
-                                        width: 28,
-                                        color: _selectedIndex == i ? Colors.white : null,
-                                      ),
-                                    ),
-                                  ),
-                        ],
+                          : GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedIndex = i;
+                            if (i == 3) {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const AtsPage()));
+                            } else if (i == 1) {
+                              Navigator.pushNamed(context, '/internship_splash');
+                            }
+                          });
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _selectedIndex == i ? const Color(0xFF8B1C1C) : Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          child: Image.asset(
+                            icons[i],
+                            width: 28,
+                            color: _selectedIndex == i ? Colors.white : null,
+                          ),
+                        ),
                       ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -608,18 +615,78 @@ class _StudentHomePageState extends State<StudentHomePage> {
         if (showPopover)
           Positioned(
             bottom: 70,
-            left: MediaQuery.of(context).size.width / 2 - 100,
+            left: MediaQuery.of(context).size.width / 2 - 110, // centré pour width = 220
             child: Material(
               color: Colors.transparent,
-              child: Container(
-                width: 200,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: const Color(0xFF8B1C1C), borderRadius: BorderRadius.circular(16)),
-                child: const Text('Long press features', style: TextStyle(color: Colors.white, fontSize: 14)),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Text(
+                      hasInternship ? '' : 'these features will be unlocked once you become an intern .',
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  Container(
+                    width: 220,
+                    height: 100,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B1C1C),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _popoverAssetOption(asset: 'assets/icons/project.png', label: 'Project', index: 0, enabled: hasInternship),
+                        _popoverAssetOption(asset: 'assets/icons/task.png', label: 'Tasks', index: 1, enabled: hasInternship),
+                        _popoverAssetOption(asset: 'assets/icons/trophy.png', label: 'Trophies', index: 2, enabled: hasInternship),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
       ],
+    );
+  }
+
+  Widget _popoverAssetOption({required String asset, required String label, required int index, required bool enabled}) {
+    final bool selected = popoverSelectedIndex == index;
+    return GestureDetector(
+      onTap: enabled
+          ? () {
+        setState(() {
+          showPopover = false;
+          popoverSelectedIndex = null;
+        });
+        _onSelectPopover(index);
+      }
+          : null,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: selected ? Colors.white.withOpacity(0.95) : Colors.white.withOpacity(0.15),
+              shape: BoxShape.circle,
+              border: enabled ? null : Border.all(color: Colors.white24, width: 2),
+            ),
+            child: ColorFiltered(
+              colorFilter: enabled
+                  ? const ColorFilter.mode(Colors.transparent, BlendMode.srcATop)
+                  : const ColorFilter.mode(Colors.grey, BlendMode.saturation),
+              child: Image.asset(asset, width: 28, color: enabled ? (selected ? const Color(0xFF8B1C1C) : Colors.white) : Colors.grey),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: TextStyle(color: enabled ? Colors.white : Colors.white54, fontSize: 12)),
+        ],
+      ),
     );
   }
 

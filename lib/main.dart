@@ -1,9 +1,11 @@
 import 'package:esprit_interlink/shared/presentation/pages/role_select_screen.dart';
+import 'package:esprit_interlink/shared/presentation/todo/student_project_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
+import 'features/projects/presentation/pages/project_create_page.dart';
 import 'shared/presentation/pages/LoadingScreen.dart';
 import 'shared/presentation/pages/SplashScreen.dart';
 import 'shared/presentation/pages/student_home_page.dart';
@@ -17,7 +19,7 @@ import 'shared/presentation/todo/hr_applications_page.dart';
 import 'shared/presentation/todo/hr_candidates_page.dart';
 import 'shared/presentation/todo/hr_profile_company_page.dart';
 import 'shared/presentation/todo/pm_profile_page.dart';
-import 'shared/presentation/todo/pm_projects_page.dart';
+import 'features/projects/presentation/pages/pm_projects_page.dart';
 import 'shared/presentation/todo/pm_interns_page.dart';
 import 'shared/presentation/todo/pm_tasks_page.dart';
 import 'features/trophies/presentation/pages/student_trophies_page.dart';
@@ -31,6 +33,10 @@ import 'features/offres/presentation/pages/hr_internship_splash_screen.dart';
 import 'features/offres/presentation/pages/hr_internship_list_page.dart';
 import 'features/offres/presentation/pages/hr_applications_list_page.dart';
 import 'data/datasources/local/database_helper.dart';
+import 'features/projects/presentation/pages/projects_page.dart';
+import 'package:provider/provider.dart';
+import 'features/projects/providers/project_provider.dart';
+import 'shared/providers/user_session_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +60,7 @@ void main() async {
     try {
       await dotenv.load(fileName: fallbackPath);
       print('Fallback dotenv load attempted: initialized=${dotenv.isInitialized}, keyPresent=${dotenv.env['GEMINI_API_KEY']?.trim().isNotEmpty ?? false}, key2Present=${dotenv.env['GEMINI_API_KEY2']?.trim().isNotEmpty ?? false}');
+      print('Fallback dotenv load attempted: initialized=${dotenv.isInitialized}, keyPresent=${dotenv.env['GEMINI_API_KEY']?.trim().isNotEmpty ?? false}');
     } catch (e) {
       print('Fallback dotenv load failed: $e');
     }
@@ -71,7 +78,6 @@ void main() async {
     await DatabaseHelper.database; // Force la création/initialisation
     await DatabaseHelper.initializeMockProjectsIfNeeded(); // Insère les projets mock si besoin
     await DatabaseHelper.printDatabaseInfo();
-    // Suppression de l'initialisation du service de notifications locales
   } catch (e) {
     print('❌ Database initialization error: $e');
   }
@@ -86,7 +92,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ApplicationProvider()),
+        ChangeNotifierProvider(create: (_) => UserSessionProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectProvider()),
+        ChangeNotifierProvider(create: (_) => ApplicationProvider()), // Ajouté
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -109,7 +117,8 @@ class MyApp extends StatelessWidget {
           '/candidates': (context) => const HRCandidatesPage(),
           '/companyProfile': (context) => const HRProfileCompanyPage(),
           '/pmProfile': (context) => const PMProfilePage(),
-          '/projects': (context) => const PMProjectsPage(),
+          '/projects': (context) => const ProjectsPage(),
+          '/projects/create': (context) => const ProjectCreatePage(),
           '/interns': (context) => const PMInternsPage(),
           '/tasks': (context) => const PMTasksPage(),
           '/trophies': (context) => const StudentTrophiesPage(),

@@ -94,11 +94,9 @@ class _HomePageMockState extends State<_HomePageMock> {
   }
 
   void _onLongPressMoveUpdateMiddleButton(LongPressMoveUpdateDetails details, BuildContext context) {
-    // Optional: handle drag if needed
   }
 
   void _onLongPressEndMiddleButton(LongPressEndDetails details) {
-    // Keep popover open until user taps outside or on an option
   }
 
   @override
