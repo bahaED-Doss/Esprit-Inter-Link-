@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:esprit_interlink/data/datasources/local/database_helper.dart';
+import 'package:esprit_interlink/data/datasources/local/database_helper.dart' as CoreDB;
 import 'package:esprit_interlink/features/projects/data/project_database_helper.dart';
 import 'package:esprit_interlink/features/projects/models/project_model.dart';
 
@@ -12,14 +12,14 @@ void main() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
     // ensure fresh DB
-    await DatabaseHelper.resetDatabase();
+    await CoreDB.DatabaseHelper.resetDatabase();
   });
 
   test('projects CRUD flow using local DB', () async {
     final dbHelper = ProjectDatabaseHelper();
 
     // initialize mock projects
-    await DatabaseHelper.initializeMockProjectsIfNeeded();
+    await CoreDB.DatabaseHelper.initializeMockProjectsIfNeeded();
 
     // Load all projects
     var all = await dbHelper.getAllProjects();
@@ -47,4 +47,3 @@ void main() {
     expect(deleted, isNull);
   });
 }
-

@@ -3,10 +3,12 @@ import 'notification_page.dart';
 import '../todo/saved_offers_page.dart';
 import '../../../features/ats/ats_page.dart';
 import '../../../features/tasks/presentation/pages/student_task_view.dart';
-import '../../../data/datasources/local/database_helper.dart';
+import '../../../data/datasources/local/database_helper.dart' as CoreDB;
 import '../../data/notification_service.dart';
 import '../../providers/user_session_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import '../../../features/profile/studen_profile_page.dart';
 
 class StudentHomePage extends StatefulWidget {
   const StudentHomePage({Key? key}) : super(key: key);
@@ -71,8 +73,8 @@ class _StudentHomePageState extends State<StudentHomePage> {
   }
 
   Future<void> _initStudentData() async {
-    await DatabaseHelper.initializeMockProjectsIfNeeded();
-    final db = await DatabaseHelper.database;
+    await CoreDB.DatabaseService().initializeMockProjectsIfNeeded();
+    final db = await CoreDB.DatabaseService().database;
     final users = await db.query('users', where: 'email = ?', whereArgs: [_studentEmail], limit: 1);
     if (users.isNotEmpty) {
       final u = users.first;
@@ -82,7 +84,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
       });
       await _refreshUnread();
     }
-    final project = await DatabaseHelper.getProjectAssignedToStudent(_studentEmail);
+    final project = await CoreDB.DatabaseService().getProjectAssignedToStudent(_studentEmail);
     if (project != null) {
       setState(() {
         _assignedProjectId = project['id'] as int?;
@@ -93,7 +95,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
 
   Future<void> _refreshUnread() async {
     if (_studentId == null) return;
-    final c = await DatabaseHelper.getUnreadNotificationCount(_studentId!);
+    final c = await CoreDB.DatabaseService().getUnreadNotificationCount(_studentId!);
     if (mounted) setState(() => _unreadCount = c);
   }
 
@@ -152,7 +154,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
         floatingMessage = null;
       });
     } else if (index == 2) {
-      Navigator.pushNamed(context, '/trophies');
+      context.pushNamed('trophies');
       setState(() {
         showPopover = false;
       });
@@ -227,7 +229,12 @@ class _StudentHomePageState extends State<StudentHomePage> {
                   child: Row(
                     children: [
                       GestureDetector(
-                        onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/role_select', (r) => false),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const StudentProfilePage()),
+                          );
+                        },
                         child: const CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/icons/avatar.png')),
                       ),
                       const SizedBox(width: 12),
@@ -411,19 +418,19 @@ class _StudentHomePageState extends State<StudentHomePage> {
                             icon: Icons.document_scanner,
                             label: 'Remote ',
                             color: const Color(0xFFE3F2FD),
-                            onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                            onTap: () => context.push('/internship_splash'),
                           ),
                           _buildOfferTypeCard(
                             icon: Icons.work,
                             label: 'Full Time',
                             color: const Color(0xFFEDE7F6),
-                            onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                            onTap: () => context.push('/internship_splash'),
                           ),
                           _buildOfferTypeCard(
                             icon: Icons.schedule,
                             label: 'Part Time',
                             color: const Color(0xFFFFF3E0),
-                            onTap: () => Navigator.pushNamed(context, '/internship_splash'),
+                            onTap: () => context.push('/internship_splash'),
                           ),
                         ],
                       ),
@@ -582,7 +589,9 @@ class _StudentHomePageState extends State<StudentHomePage> {
                             if (i == 3) {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => const AtsPage()));
                             } else if (i == 1) {
-                              Navigator.pushNamed(context, '/internship_splash');
+                              // Naviguer vers la page de liste d'offres (route nommée 'offers')
+                              // Utilise GoRouter si disponible dans le projet (défini dans app_router.dart)
+                              context.pushNamed('offers');
                             }
                           });
                         },

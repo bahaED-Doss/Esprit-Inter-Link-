@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class CustomDrawer extends StatelessWidget {
   final String role;
@@ -10,55 +11,55 @@ class CustomDrawer extends StatelessWidget {
     if (role == 'student') {
       drawerItems = [
         _drawerItem('Profil', 'assets/icons/userIcon.png', () {
-          Navigator.pushNamed(context, '/studentProfile');
+          context.pushNamed('studentProfile');
         }),
         _drawerItem('Offres', 'assets/icons/offers.png', () {
-          Navigator.pushNamed(context, '/offers');
+          context.pushNamed('offers');
         }),
         _drawerItem('Mes candidatures', 'assets/icons/applications.png', () {
-          Navigator.pushNamed(context, '/myApplications');
+          context.pushNamed('myApplications');
         }),
         _drawerItem('Test', 'assets/icons/test.png', () {
-          Navigator.pushNamed(context, '/test');
+          context.push('/test');
         }),
         _drawerItem('Déconnexion', 'assets/icons/logout.png', () {
-          Navigator.pushNamed(context, '/');
+          context.goNamed('login');
         }),
       ];
     } else if (role == 'hr') {
       drawerItems = [
         _drawerItem('Candidatures', 'assets/icons/applications.png', () {
-          Navigator.pushNamed(context, '/applications');
+          context.push('/applications');
         }),
         _drawerItem('Candidats', 'assets/icons/candidates.png', () {
-          Navigator.pushNamed(context, '/candidates');
+          context.push('/candidates');
         }),
         _drawerItem('Profil & Société', 'assets/icons/company.png', () {
-          Navigator.pushNamed(context, '/companyProfile');
+          context.push('/companyProfile');
         }),
         _drawerItem('Test', 'assets/icons/test.png', () {
-          Navigator.pushNamed(context, '/test');
+          context.push('/test');
         }),
         _drawerItem('Déconnexion', 'assets/icons/logout.png', () {
-          Navigator.pushNamed(context, '/');
+          context.goNamed('login');
         }),
       ];
     } else if (role == 'pm') {
       drawerItems = [
         _drawerItem('Profil', 'assets/icons/userIcon.png', () {
-          Navigator.pushNamed(context, '/pmProfile');
+          context.push('/pmProfile');
         }),
         _drawerItem('Projets', 'assets/icons/projects.png', () {
-          Navigator.pushNamed(context, '/projects');
+          context.push('/projects');
         }),
         _drawerItem('Stagiaires', 'assets/icons/interns.png', () {
-          Navigator.pushNamed(context, '/interns');
+          context.push('/interns');
         }),
         _drawerItem('Tâches', 'assets/icons/tasks.png', () {
-          Navigator.pushNamed(context, '/tasks');
+          context.push('/tasks');
         }),
         _drawerItem('Déconnexion', 'assets/icons/logout.png', () {
-          Navigator.pushNamed(context, '/');
+          context.goNamed('login');
         }),
       ];
     }

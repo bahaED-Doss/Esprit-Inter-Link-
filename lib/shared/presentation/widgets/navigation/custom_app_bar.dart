@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/colors.dart';
+import '../../pages/notification_page.dart';
 
 /// Custom App Bar with notification and profile icons
 /// Shows hamburger menu icon to open drawer
@@ -82,7 +84,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 icon: const Icon(Icons.notifications_outlined),
                 color: AppColors.textPrimary,
                 onPressed: onNotificationTap ?? () {
-                  Navigator.pushNamed(context, '/notifications');
+                  context.pushNamed('notifications');
                 },
               ),
               if (notificationCount > 0)
@@ -117,7 +119,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             icon: const Icon(Icons.account_circle_outlined),
             color: AppColors.textPrimary,
             onPressed: onProfileTap ?? () {
-              Navigator.pushNamed(context, '/profile');
+              context.pushNamed('studentProfile');
             },
           ),
         const SizedBox(width: 8),

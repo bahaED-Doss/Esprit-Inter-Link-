@@ -6,8 +6,13 @@ class RouteNames {
   static const home = '/home';
 
   // Auth
-  static const login = '/login';
-  static const signup = '/signup';
+  static const String login = '/login';
+  static const String signup = '/signup';
+  static const String forgotPassword = '/forgot-password';
+  static const String checkEmail = '/check-email';
+  static const String success = '/success';
+  static const String welcomeBack = '/welcome-back';
+  static const String changePass = '/change-password';
 
   // HR
   static const hrDashboard = '/hr/dashboard';

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../data/task_database_helper.dart';
 import '../models/task_model.dart';
-import '../../../data/datasources/local/database_helper.dart' as CoreDB;
+import 'package:esprit_interlink/data/datasources/local/database_helper.dart' as CoreDB;
+import '../../projects/data/project_database_helper.dart' as ProjectDB;
 
 /// Provider pour la gestion d'état des tâches - Équivalent d'un Service Angular/Spring
 /// Utilise le pattern ChangeNotifier pour notifier les widgets des changements
 /// Pattern Observable/Observer pour la réactivité
 class TaskProvider extends ChangeNotifier {
   final TaskDatabaseHelper _db = TaskDatabaseHelper();
+  final CoreDB.DatabaseService _coreDb = CoreDB.DatabaseService();
+  final ProjectDB.ProjectDatabaseHelper _projectDb = ProjectDB.ProjectDatabaseHelper();
 
   // Liste complète telle que récupérée depuis la DB
   List<Task> _allTasks = [];
@@ -82,15 +85,18 @@ class TaskProvider extends ChangeNotifier {
 
       // Notification: informer l'étudiant assigné au projet
       try {
-        final project = await CoreDB.DatabaseHelper.getProjectById(inserted.projectId);
-        final projectName = project?['name'] as String? ?? 'Project';
-        final assignedEmail = project?['assigned_to'] as String?;
+        // Utilise ProjectDatabaseHelper pour obtenir les détails du projet
+        final project = await _projectDb.getProjectById(inserted.projectId);
+        final projectName = project?.title ?? 'Project';
+        final assignedEmail = project?.assignedToEmail;
         if (assignedEmail != null && assignedEmail.trim().isNotEmpty) {
-          final userId = await CoreDB.DatabaseHelper.findUserIdByEmail(assignedEmail.trim());
+          final user = await _coreDb.getUserByEmail(assignedEmail.trim());
+          final userId = user?.id;
           if (userId != null) {
             final title = 'New task added';
-            final message = '"${inserted.title}" added to "$projectName"';
-            await CoreDB.DatabaseHelper.insertNotification(
+            final message = '"${inserted.title}" added to "${projectName}"';
+            // Insert notification via DatabaseService instance
+            await _coreDb.insertNotification(
               userId: userId,
               title: title,
               message: message,
@@ -143,17 +149,17 @@ class TaskProvider extends ChangeNotifier {
 
       // Notification: si plus aucune tâche ouverte pour ce projet, notifier le PM
       try {
-        final openCount = await CoreDB.DatabaseHelper.countOpenTasksForProject(updated.projectId);
+        final openCount = await _coreDb.countOpenTasksForProject(updated.projectId);
         if (openCount == 0) {
-          final pmUserId = await CoreDB.DatabaseHelper.getPMUserIdForProject(updated.projectId);
+          final pmUserId = await _coreDb.getPMUserIdForProject(updated.projectId);
           if (pmUserId != null) {
-            final hasUnread = await CoreDB.DatabaseHelper.hasUnreadEmptyProjectNotification(pmUserId, updated.projectId);
+            final hasUnread = await _coreDb.hasUnreadEmptyProjectNotification(pmUserId, updated.projectId);
             if (!hasUnread) {
-              final project = await CoreDB.DatabaseHelper.getProjectById(updated.projectId);
-              final projectName = project?['name'] as String? ?? 'Project';
+              final project = await _projectDb.getProjectById(updated.projectId);
+              final projectName = project?.title ?? 'Project';
               final title = 'No tasks left';
               final message = '"$projectName" has no tasks to do. Add new tasks or finish the project?';
-              await CoreDB.DatabaseHelper.insertNotification(
+              await _coreDb.insertNotification(
                 userId: pmUserId,
                 title: title,
                 message: message,

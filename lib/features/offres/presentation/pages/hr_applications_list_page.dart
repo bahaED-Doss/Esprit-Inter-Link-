@@ -66,7 +66,7 @@ class _HRApplicationsListPageState extends State<HRApplicationsListPage> {
       if (success && mounted) {
         // 1. Fermer l'offre (status = CLOSED)
         try {
-          final db = await CoreDB.DatabaseHelper.database;
+          final db = await CoreDB.DatabaseService().database;
           await db.update(
             'internships',
             {'status': 'CLOSED', 'updatedAt': DateTime.now().toIso8601String()},
@@ -79,16 +79,16 @@ class _HRApplicationsListPageState extends State<HRApplicationsListPage> {
 
         // 2. Récupérer l'email de l'étudiant et le marquer comme INTERN
         try {
-          final db = await CoreDB.DatabaseHelper.database;
+          final db = await CoreDB.DatabaseService().database;
           final user = await db.query('users', where: 'id = ?', whereArgs: [application.studentId], limit: 1);
           if (user.isNotEmpty) {
             final email = user.first['email'] as String;
 
             // Mettre à jour le statut de l'étudiant
-            await CoreDB.DatabaseHelper.updateStudentInternshipStatus(email, 'INTERN');
+            await CoreDB.DatabaseService().updateStudentInternshipStatus(email, 'INTERN');
 
             // 3. Assigner automatiquement un projet à l'étudiant
-            final assignedId = await CoreDB.DatabaseHelper.assignFirstAvailableProjectToStudent(email);
+            final assignedId = await CoreDB.DatabaseService().assignFirstAvailableProjectToStudent(email);
 
             if (assignedId != null) {
               print('✅ Student assigned to project #$assignedId');
@@ -107,7 +107,7 @@ class _HRApplicationsListPageState extends State<HRApplicationsListPage> {
 
         // Envoyer une notification à l'étudiant pour l'informer de la décision
         try {
-          await CoreDB.DatabaseHelper.insertNotification(
+          await CoreDB.DatabaseService().insertNotification(
             userId: application.studentId,
             title: 'Application accepted',
             message: 'Your application for internship #${application.internshipId} has been accepted by the company.\nDouble-tap this notification to confirm and become an intern.',
@@ -159,7 +159,7 @@ class _HRApplicationsListPageState extends State<HRApplicationsListPage> {
         );
         // Envoyer une notification de rejet à l'étudiant
         try {
-          await CoreDB.DatabaseHelper.insertNotification(
+          await CoreDB.DatabaseService().insertNotification(
             userId: application.studentId,
             title: 'Application refused',
             message: 'Your application for internship #${application.internshipId} has been refused by the company.',
@@ -345,7 +345,8 @@ class _HRApplicationsListPageState extends State<HRApplicationsListPage> {
           // Barre de recherche
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              // Utilise la couleur demandée avec la même opacité
+              color: const Color(0xFF8B1C1C).withAlpha((0.2 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextField(
@@ -353,8 +354,9 @@ class _HRApplicationsListPageState extends State<HRApplicationsListPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Search by name or email',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                prefixIcon: const Icon(Icons.search, color: Colors.white),
+                // icône et hint utilisent la couleur demandée
+                hintStyle: TextStyle(color: const Color(0xFF8B1C1C).withAlpha((0.7 * 255).round())),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF8B1C1C)),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:sqflite/sqflite.dart';
+import '../../../shared/data/database_helper.dart' hide DatabaseHelper;
 import '../models/internship_model.dart';
 import '../models/application_model.dart';
 import '../../../data/datasources/local/database_helper.dart';

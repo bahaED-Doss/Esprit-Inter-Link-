@@ -9,6 +9,7 @@ import '../widgets/task_form_dialog.dart';
 import 'task_details_dialog.dart'; // + afficher les détails en vue Kanban pour les étudiants
 import '../../../../data/datasources/local/database_helper.dart';
 import '../../../../shared/data/notification_service.dart';
+import 'package:esprit_interlink/features/projects/data/project_database_helper.dart' as ProjectDB;
 
 class KanbanBoard extends StatefulWidget {
   final bool isPM;
@@ -78,7 +79,7 @@ class _KanbanBoardState extends State<KanbanBoard> {
             );
             // Vérification du rôle avant notification PM
             final currentUser = await DatabaseHelper.getUserById(widget.userId);
-            if (currentUser != null && currentUser['role'] == 'STUDENT') {
+            if (currentUser != null && (currentUser.role.toLowerCase() == 'student')) {
               if (previousStatus == TaskStatus.TO_DO && (status == TaskStatus.DOING || status == TaskStatus.DONE)) {
                 final openTasks = await DatabaseHelper.countOpenTasksForProject(incoming.projectId);
                 if (openTasks == 0) {
@@ -86,10 +87,11 @@ class _KanbanBoardState extends State<KanbanBoard> {
                   if (pmId != null) {
                     final alreadyNotified = await DatabaseHelper.hasUnreadEmptyProjectNotification(pmId, incoming.projectId);
                     if (!alreadyNotified) {
-                      final project = await DatabaseHelper.getProjectById(incoming.projectId);
+                      final project = await ProjectDB.ProjectDatabaseHelper().getProjectById(incoming.projectId);
+                      final projectName = project?.title ?? '';
                       await NotificationService.addNotificationForUser(
                         pmId,
-                        'Le projet ${project?['name'] ?? ''} n’a plus de tâches à faire, voulez-vous en ajouter ou terminer le projet ?',
+                        'Le projet ${projectName} n’a plus de tâches à faire, voulez-vous en ajouter ou terminer le projet ?',
                         title: 'Projet sans tâches',
                         type: 'PROJECT',
                         referenceId: incoming.projectId,

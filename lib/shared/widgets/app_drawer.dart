@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/user_session_provider.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -14,33 +15,33 @@ class AppDrawer extends StatelessWidget {
         return [
           ListTile(
             title: const Text('Offers'),
-            onTap: () => Navigator.pushNamed(context, '/hr/offers'),
+            onTap: () => context.push('/applications'),
           ),
           ListTile(
             title: const Text('Applications'),
-            onTap: () => Navigator.pushNamed(context, '/hr/applications'),
+            onTap: () => context.push('/applications'),
           ),
         ];
       } else if (session.isPM) {
         return [
           ListTile(
             title: const Text('Projects'),
-            onTap: () => Navigator.pushNamed(context, '/pm/projects'),
+            onTap: () => context.push('/projects'),
           ),
           ListTile(
             title: const Text('Tasks'),
-            onTap: () => Navigator.pushNamed(context, '/pm/tasks'),
+            onTap: () => context.push('/tasks'),
           ),
         ];
       } else if (session.isStudent) {
         return [
           ListTile(
             title: const Text('Browse Offers'),
-            onTap: () => Navigator.pushNamed(context, '/student/offers'),
+            onTap: () => context.push('/student_offers' /* path fallback */),
           ),
           ListTile(
             title: const Text('My Applications'),
-            onTap: () => Navigator.pushNamed(context, '/student/applications'),
+            onTap: () => context.push('/myApplications'),
           ),
         ];
       } else {

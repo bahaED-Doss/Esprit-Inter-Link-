@@ -6,10 +6,11 @@ import '../../providers/user_session_provider.dart';
 import '../../../data/datasources/local/database_helper.dart' as CoreDB;
 import '../../../features/offres/presentation/pages/hr_applications_list_page.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 class HRHomePage extends StatelessWidget {
-  final int userId;
-  const HRHomePage({Key? key, required this.userId}) : super(key: key);
+  final int? userId;
+  const HRHomePage({Key? key, this.userId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -28,9 +29,9 @@ class _HomePageMock extends StatefulWidget {
   final String screenshot;
   final Color color;
   final List<String> icons;
-  final int userId;
+  final int? userId;
 
-  const _HomePageMock({required this.title, required this.screenshot, required this.color, required this.icons, required this.userId});
+  const _HomePageMock({required this.title, required this.screenshot, required this.color, required this.icons, this.userId});
 
   @override
   State<_HomePageMock> createState() => _HomePageMockState();
@@ -41,6 +42,11 @@ class _HomePageMockState extends State<_HomePageMock> {
   int _unreadCount = 0;
   bool _candidatesClicked = false;
   bool _showPopover = false;
+  // Position du popover (calculée depuis le long press)
+  double? _popoverLeft;
+  double? _popoverBottom;
+  // Key pour le bouton central afin d'aligner le popover exactement dessus
+  final GlobalKey _middleButtonKey = GlobalKey();
 
   List<Map<String, dynamic>> _recentApplications = [];
   bool _isLoadingRecentApps = false;
@@ -55,7 +61,9 @@ class _HomePageMockState extends State<_HomePageMock> {
 
   Future<void> _loadUnreadCount() async {
     try {
-      final c = await NotificationService.getUnreadCount(widget.userId);
+      final session = Provider.of<UserSessionProvider>(context, listen: false);
+      final storedId = widget.userId ?? (int.tryParse(session.userId ?? '') ?? 0);
+      final c = await NotificationService.getUnreadCount(storedId);
       if (mounted) setState(() => _unreadCount = c);
     } catch (_) {
       // ignore
@@ -88,15 +96,56 @@ class _HomePageMockState extends State<_HomePageMock> {
   }
 
   void _onLongPressStartMiddleButton(LongPressStartDetails details) {
+    // On essaie d'obtenir la position du bouton central si possible
+    try {
+      final RenderBox? box = _middleButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      if (box != null) {
+        final Offset topLeft = box.localToGlobal(Offset.zero);
+        final Size size = box.size;
+        final screenSize = MediaQuery.of(context).size;
+        const double popoverWidth = 80.0;
+        // place popover centered above the middle button
+        double left = topLeft.dx + (size.width / 2) - (popoverWidth / 2);
+        double bottom = screenSize.height - topLeft.dy + 8; // slightly above
+        // clamp
+        if (left < 8) left = 8;
+        if (left + popoverWidth > screenSize.width - 8) left = screenSize.width - popoverWidth - 8;
+        if (bottom < 8) bottom = 8;
+        setState(() {
+          _popoverLeft = left;
+          _popoverBottom = bottom;
+          _showPopover = true;
+        });
+        return;
+      }
+    } catch (_) {
+      // fallback to long-press position below
+    }
+
+    // Fallback: Calcule la position du popover par rapport à la position globale du doigt
+    final screenSize = MediaQuery.of(context).size;
+    const double popoverWidth = 80.0;
+    final dx = details.globalPosition.dx;
+    final dy = details.globalPosition.dy;
+    double left = dx - popoverWidth / 2;
+    double bottom = screenSize.height - dy + 8; // 8 px au-dessus du point touché
+    if (left < 8) left = 8;
+    if (left + popoverWidth > screenSize.width - 8) left = screenSize.width - popoverWidth - 8;
+    if (bottom < 8) bottom = 8;
+
     setState(() {
+      _popoverLeft = left;
+      _popoverBottom = bottom;
       _showPopover = true;
     });
   }
 
   void _onLongPressMoveUpdateMiddleButton(LongPressMoveUpdateDetails details, BuildContext context) {
+    // Optional: handle drag if needed
   }
 
   void _onLongPressEndMiddleButton(LongPressEndDetails details) {
+    // Keep popover open until user taps outside or on an option
   }
 
   @override
@@ -142,7 +191,9 @@ class _HomePageMockState extends State<_HomePageMock> {
                       const SizedBox(width: 12),
                       GestureDetector(
                         onTap: () async {
-                          await Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationPage(userId: widget.userId)));
+                          final session = Provider.of<UserSessionProvider>(context, listen: false);
+                          final storedId = widget.userId ?? (int.tryParse(session.userId ?? '') ?? 0);
+                          await Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationPage(userId: storedId)));
                           await _loadUnreadCount();
                         },
                         child: Stack(
@@ -279,50 +330,50 @@ class _HomePageMockState extends State<_HomePageMock> {
                       if (_isLoadingRecentApps) const Center(child: CircularProgressIndicator())
                       else if (_recentAppsError != null) Center(child: Text(_recentAppsError!))
                       else if (_recentApplications.isEmpty) const Center(child: Text('No recent pending applications found.'))
-                      else
-                        Column(
-                          children: _recentApplications.map((app) {
-                            final internshipTitle = app['internshipTitle'] ?? '';
-                            final companyName = app['companyName'] ?? '';
-                            final appStatus = app['status'] ?? 'PENDING';
-                            final createdAt = app['createdAt'] != null ? DateTime.tryParse(app['createdAt']) : null;
-                            final isPending = appStatus == 'PENDING';
+                        else
+                          Column(
+                            children: _recentApplications.map((app) {
+                              final internshipTitle = app['internshipTitle'] ?? '';
+                              final companyName = app['companyName'] ?? '';
+                              final appStatus = app['status'] ?? 'PENDING';
+                              final createdAt = app['createdAt'] != null ? DateTime.tryParse(app['createdAt']) : null;
+                              final isPending = appStatus == 'PENDING';
 
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 16),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Color.fromRGBO(0,0,0,0.08), blurRadius: 8, offset: const Offset(0,4))]),
-                              child: Row(
-                                children: [
-                                  Container(width: 8, height: 8, decoration: BoxDecoration(color: isPending ? Colors.orange : Colors.green, borderRadius: BorderRadius.circular(4))),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(internshipTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF1A1A2E))),
-                                        const SizedBox(height: 4),
-                                        Text(companyName, style: const TextStyle(fontSize: 14, color: Color(0xFF666666))),
-                                        const SizedBox(height: 8),
-                                        Row(children: [
-                                          Expanded(child: Container(padding: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: isPending ? Color.fromRGBO(255,152,0,0.1) : Color.fromRGBO(76,175,80,0.1), borderRadius: BorderRadius.circular(16)), child: Text(appStatus, textAlign: TextAlign.center, style: TextStyle(color: isPending ? Colors.orange : Colors.green)))),
-                                          const SizedBox(width: 8),
-                                          Container(width: 1, height: 40, color: const Color(0xFFE0E0E0)),
-                                          const SizedBox(width: 8),
-                                          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                                            const Text('Applied on:', style: TextStyle(fontSize: 12, color: Color(0xFF999999))),
-                                            const SizedBox(height: 4),
-                                            Text(createdAt != null ? DateFormat('MMM d, y').format(createdAt) : '', style: const TextStyle(fontSize: 12, color: Color(0xFF1A1A2E))),
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Color.fromRGBO(0,0,0,0.08), blurRadius: 8, offset: const Offset(0,4))]),
+                                child: Row(
+                                  children: [
+                                    Container(width: 8, height: 8, decoration: BoxDecoration(color: isPending ? Colors.orange : Colors.green, borderRadius: BorderRadius.circular(4))),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(internshipTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF1A1A2E))),
+                                          const SizedBox(height: 4),
+                                          Text(companyName, style: const TextStyle(fontSize: 14, color: Color(0xFF666666))),
+                                          const SizedBox(height: 8),
+                                          Row(children: [
+                                            Expanded(child: Container(padding: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: isPending ? Color.fromRGBO(255,152,0,0.1) : Color.fromRGBO(76,175,80,0.1), borderRadius: BorderRadius.circular(16)), child: Text(appStatus, textAlign: TextAlign.center, style: TextStyle(color: isPending ? Colors.orange : Colors.green)))),
+                                            const SizedBox(width: 8),
+                                            Container(width: 1, height: 40, color: const Color(0xFFE0E0E0)),
+                                            const SizedBox(width: 8),
+                                            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                                              const Text('Applied on:', style: TextStyle(fontSize: 12, color: Color(0xFF999999))),
+                                              const SizedBox(height: 4),
+                                              Text(createdAt != null ? DateFormat('MMM d, y').format(createdAt) : '', style: const TextStyle(fontSize: 12, color: Color(0xFF1A1A2E))),
+                                            ])
                                           ])
-                                        ])
-                                      ],
-                                    ),
-                                  )
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
+                                        ],
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
                     ],
                   ),
                 ),
@@ -335,6 +386,8 @@ class _HomePageMockState extends State<_HomePageMock> {
                 onTap: () {
                   setState(() {
                     _showPopover = false;
+                    _popoverLeft = null;
+                    _popoverBottom = null;
                   });
                 },
                 child: Container(
@@ -344,8 +397,8 @@ class _HomePageMockState extends State<_HomePageMock> {
                 ),
               ),
               Positioned(
-                bottom: 70,
-                left: MediaQuery.of(context).size.width / 2 - 40,
+                bottom: _popoverBottom ?? 70,
+                left: _popoverLeft ?? (MediaQuery.of(context).size.width / 2 - 40),
                 child: Material(
                   color: Colors.transparent,
                   child: GestureDetector(
@@ -353,6 +406,8 @@ class _HomePageMockState extends State<_HomePageMock> {
                       Navigator.pushNamed(context, '/trophies_hr');
                       setState(() {
                         _showPopover = false;
+                        _popoverLeft = null;
+                        _popoverBottom = null;
                       });
                     },
                     child: Container(
@@ -379,16 +434,31 @@ class _HomePageMockState extends State<_HomePageMock> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-            if (index == 1) {
-              // Navigate to HR internship management
-              Navigator.pushNamed(context, '/hr_internship_splash');
-            } else if (index == 3) {
-              _candidatesClicked = !_candidatesClicked;
+        onTap: (index) async {
+          setState(() => _selectedIndex = index);
+          // Resolve HR id: prefer widget.userId, fallback to session
+          final session = Provider.of<UserSessionProvider>(context, listen: false);
+          final storedId = widget.userId ?? (int.tryParse(session.userId ?? '') ?? 0);
+
+          if (index == 0) {
+            // Retour à la home HR (reste sur la page si déjà dessus)
+            context.goNamed('hr_home');
+          } else if (index == 1) {
+            // Ouvrir la liste des offres HR en passant l'id via GoRouter
+            if (storedId > 0) {
+              context.pushNamed('hr_internships', extra: storedId);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('HR id not available')));
             }
-          });
+          } else if (index == 2) {
+            // Middle button handled by long-press gesture (popover)
+          } else if (index == 3) {
+            // Aller à la page des candidats
+            context.pushNamed('candidates');
+          } else if (index == 4) {
+            // Aller à la page des applications (saved)
+            context.pushNamed('applications');
+          }
         },
         items: [
           BottomNavigationBarItem(
@@ -396,11 +466,12 @@ class _HomePageMockState extends State<_HomePageMock> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/icons/internship.png', width: 28),
+            icon: Image.asset('assets/icons/internshipD.png', width: 28),
             label: 'Internship',
           ),
           BottomNavigationBarItem(
             icon: GestureDetector(
+              key: _middleButtonKey,
               onLongPressStart: _onLongPressStartMiddleButton,
               onLongPressMoveUpdate: (details) => _onLongPressMoveUpdateMiddleButton(details, context),
               onLongPressEnd: _onLongPressEndMiddleButton,
@@ -421,4 +492,3 @@ class _HomePageMockState extends State<_HomePageMock> {
     );
   }
 }
-

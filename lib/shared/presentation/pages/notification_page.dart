@@ -25,7 +25,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
   Future<List<Map<String, dynamic>>> _markAllReadAndLoad() async {
     try {
-      await CoreDB.DatabaseHelper.markAllNotificationsRead(widget.userId);
+      await CoreDB.DatabaseService().markAllNotificationsRead(widget.userId);
     } catch (e) {
       print('⚠️ Failed to mark all notifications read: $e');
     }
@@ -33,9 +33,9 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<List<Map<String, dynamic>>> _load() async {
-    final items = await CoreDB.DatabaseHelper.getNotificationsForUser(widget.userId);
-    final user = await CoreDB.DatabaseHelper.getUserById(widget.userId);
-    final role = (user?['role'] ?? user?['userRole'] ?? '').toString().toLowerCase();
+    final items = await CoreDB.DatabaseService().getNotificationsForUser(widget.userId);
+    final user = await CoreDB.DatabaseService().getUserById(widget.userId);
+    final role = (user?.role ?? '').toString().toLowerCase();
 
     // Filtrer les notifications 'Application accepted' pour le PM
     if (role == 'pm') {
@@ -54,7 +54,7 @@ class _NotificationPageState extends State<NotificationPage> {
           try {
             final internship = await ApplicationRepository().getInternshipById(ref);
             if (internship != null) {
-              final internshipName = (internship.title ?? '').toString();
+              final internshipName = internship.title;
               if (internshipName.isNotEmpty) {
                 n['message'] = 'You have been accepted to $internshipName';
               }
@@ -142,8 +142,8 @@ class _NotificationPageState extends State<NotificationPage> {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () async {
-                    final user = await CoreDB.DatabaseHelper.getUserById(widget.userId);
-                    final role = (user?['role'] ?? user?['userRole'] ?? '').toString().toLowerCase();
+                    final user = await CoreDB.DatabaseService().getUserById(widget.userId);
+                    final role = (user?.role ?? '').toString().toLowerCase();
                     if ((type == 'APPLICATION_ACCEPTED' || title.toLowerCase().contains('application accepted')) && role == 'student' && referenceId != null) {
                       final ref = referenceId is int ? referenceId : int.tryParse(referenceId.toString());
                       if (ref != null) {
@@ -169,7 +169,7 @@ class _NotificationPageState extends State<NotificationPage> {
                     }
                     try {
                       // Mark this notification as read in DB
-                      await CoreDB.DatabaseHelper.markNotificationRead(id);
+                      await CoreDB.DatabaseService().markNotificationRead(id);
                     } catch (_) {}
 
                     // If the notification has a reference id, navigate to HR applications list
@@ -213,11 +213,19 @@ class _NotificationPageState extends State<NotificationPage> {
                     }
                     try {
                       // Get user email
-                      final user = await CoreDB.DatabaseHelper.getUserById(
+                      final user = await CoreDB.DatabaseService().getUserById(
                           widget.userId);
-                      final email = user?['email'] as String?;
-                      final currentStatus = user?['internship_status'] as String? ??
-                          'CANDIDATE';
+                      final email = user?.email;
+                      // internship_status stored in users table; model doesn't expose it — check by fetching raw row if needed
+                      // fall back to 'CANDIDATE' when unknown
+                      String currentStatus = 'CANDIDATE';
+                      try {
+                        final db = await CoreDB.DatabaseService().database;
+                        final rows = await db.query('users', where: 'id = ?', whereArgs: [widget.userId], limit: 1);
+                        if (rows.isNotEmpty) {
+                          currentStatus = (rows.first['internship_status'] as String?) ?? 'CANDIDATE';
+                        }
+                      } catch (_) {}
 
                       if (email == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -234,14 +242,14 @@ class _NotificationPageState extends State<NotificationPage> {
                       }
 
                       // Mark notification as read
-                      await CoreDB.DatabaseHelper.markNotificationRead(id);
+                      await CoreDB.DatabaseService().markNotificationRead(id);
 
                       // Update student status to INTERN
-                      await CoreDB.DatabaseHelper
+                      await CoreDB.DatabaseService()
                           .updateStudentInternshipStatus(email, 'INTERN');
 
                       // Assign a project to the student (first available)
-                      final assignedId = await CoreDB.DatabaseHelper
+                      final assignedId = await CoreDB.DatabaseService()
                           .assignFirstAvailableProjectToStudent(email);
 
                       // Also update the applications table to mark this student's application as ACCEPTED for the internship reference
@@ -249,7 +257,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         final ref = referenceId is int ? referenceId : int
                             .tryParse(referenceId.toString());
                         if (ref != null) {
-                          final db = await CoreDB.DatabaseHelper.database;
+                          final db = await CoreDB.DatabaseService().database;
                           try {
                             await db.update(
                                 'applications', {'status': 'ACCEPTED'},
@@ -329,7 +337,7 @@ class _NotificationPageState extends State<NotificationPage> {
                     trailing: isRead == 0
                         ? TextButton(
                       onPressed: () async {
-                        await CoreDB.DatabaseHelper.markNotificationRead(id);
+                        await CoreDB.DatabaseService().markNotificationRead(id);
                         setState(() => _future = _load());
                       },
                       child: const Text('Mark read'),

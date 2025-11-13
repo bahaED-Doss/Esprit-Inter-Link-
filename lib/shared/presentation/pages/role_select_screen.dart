@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class RoleSelectScreen extends StatefulWidget {
-  const RoleSelectScreen({Key? key}) : super(key: key);
+  const RoleSelectScreen({super.key});
 
   @override
   State<RoleSelectScreen> createState() => _RoleSelectScreenState();
@@ -10,18 +11,18 @@ class RoleSelectScreen extends StatefulWidget {
 class _RoleSelectScreenState extends State<RoleSelectScreen> {
   String? _selectedRole;
   final List<Map<String, dynamic>> _roles = [
-    {'label': 'Student', 'icon': Icons.school, 'color': Color(0xFF8B1C1C)},
-    {'label': 'HR', 'icon': Icons.business_center, 'color': Color(0xFF8B1C1C)},
-    {'label': 'PM', 'icon': Icons.engineering, 'color': Color(0xFF8B1C1C)},
+    {'label': 'Student', 'icon': Icons.school, 'color': const Color(0xFF8B1C1C)},
+    {'label': 'HR', 'icon': Icons.business_center, 'color': const Color(0xFF8B1C1C)},
+    {'label': 'PM', 'icon': Icons.engineering, 'color': const Color(0xFF8B1C1C)},
   ];
 
   void _navigateToHome() {
     if (_selectedRole == 'Student') {
-      Navigator.pushReplacementNamed(context, '/student_home');
+      context.goNamed('student_home');
     } else if (_selectedRole == 'HR') {
-      Navigator.pushReplacementNamed(context, '/hr_home');
+      context.goNamed('hr_home');
     } else if (_selectedRole == 'PM') {
-      Navigator.pushReplacementNamed(context, '/pm_home');
+      context.goNamed('pm_home');
     }
   }
 

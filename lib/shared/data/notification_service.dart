@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../data/datasources/local/database_helper.dart';
 
 class NotificationService {
+  // Ajoute une notification pour un utilisateur (base de données uniquement)
   static Future<void> addNotificationForUser(int userId, String message, {String title = 'Notification', String type = 'SYSTEM', int? referenceId}) async {
     try {
       await DatabaseHelper.insertNotification(
@@ -26,6 +27,7 @@ class NotificationService {
     return await DatabaseHelper.getNotificationsForUser(userId);
   }
 
+  // Marque toutes les notifications comme lues
   static Future<void> markAllAsRead(int userId) async {
     await DatabaseHelper.markAllNotificationsRead(userId);
   }

@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:esprit_interlink/data/datasources/local/database_helper.dart' as CoreDB;
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -13,6 +14,10 @@ class DatabaseHelper {
     _database = await _initDatabase();
     return _database!;
   }
+
+  // --- Compatibility wrappers delegating to central DB service ---
+  static Future<void> resetDatabase() => CoreDB.DatabaseHelper.resetDatabase();
+  static Future<void> initializeMockProjectsIfNeeded() => CoreDB.DatabaseHelper.initializeMockProjectsIfNeeded();
 
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();

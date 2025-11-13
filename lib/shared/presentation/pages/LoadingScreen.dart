@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:go_router/go_router.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({Key? key}) : super(key: key);
@@ -31,7 +32,7 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
     // Ajout de la navigation automatique vers SplashScreen après 2 secondes
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/splash');
+        context.goNamed('splash');
       }
     });
   }

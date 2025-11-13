@@ -201,7 +201,8 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
           // Barre de recherche
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha((0.2 * 255).round()),
+              // Utilise la couleur demandée avec la même opacité
+              color: const Color(0xFF8B1C1C).withAlpha((0.2 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextField(
@@ -209,8 +210,9 @@ class _StudentInternshipListPageState extends State<StudentInternshipListPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Search',
-                hintStyle: TextStyle(color: Colors.white.withAlpha((0.7 * 255).round())),
-                prefixIcon: const Icon(Icons.search, color: Colors.white),
+                // icône et hint utilisent la couleur demandée
+                hintStyle: TextStyle(color: const Color(0xFF8B1C1C).withAlpha((0.7 * 255).round())),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF8B1C1C)),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),

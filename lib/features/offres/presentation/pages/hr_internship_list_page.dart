@@ -4,6 +4,7 @@ import '../../../aplication/models/internship_model.dart';
 import '../../../aplication/providers/application_provider.dart';
 import 'hr_internship_form_page.dart';
 import '../../../aplication/presentation/pages/internship_details_page.dart';
+import 'package:esprit_interlink/features/offres/presentation/pages/hr_applications_list_page.dart';
 
 /// Page listant toutes les offres de stage créées par le HR avec CRUD
 class HRInternshipListPage extends StatefulWidget {
@@ -280,7 +281,8 @@ class _HRInternshipListPageState extends State<HRInternshipListPage> {
           // Barre de recherche
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha((0.2 * 255).round()),
+              // Utilise la couleur demandée avec la même opacité
+              color: const Color(0xFF8B1C1C).withAlpha((0.2 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextField(
@@ -288,8 +290,9 @@ class _HRInternshipListPageState extends State<HRInternshipListPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Search',
-                hintStyle: TextStyle(color: Colors.white.withAlpha((0.7 * 255).round())),
-                prefixIcon: const Icon(Icons.search, color: Colors.white),
+                // icône et hint utilisent la couleur demandée
+                hintStyle: TextStyle(color: const Color(0xFF8B1C1C).withAlpha((0.7 * 255).round())),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF8B1C1C)),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
@@ -447,20 +450,24 @@ class _HRInternshipListPageState extends State<HRInternshipListPage> {
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/hr_applications',
-                              arguments: internship.id,
-                            );
+                            // Ouvre directement la liste des candidatures pour cette offre
+                            if (internship.id != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => HRApplicationsListPage(internshipId: internship.id!)),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Internship id not available')));
+                            }
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B1C1C),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                          ),
-                          icon: const Icon(Icons.people, size: 18),
-                          label: const Text('Applications'),
-                        ),
+                           style: ElevatedButton.styleFrom(
+                             backgroundColor: const Color(0xFF8B1C1C),
+                             foregroundColor: Colors.white,
+                             elevation: 0,
+                           ),
+                           icon: const Icon(Icons.people, size: 18),
+                           label: const Text('Applications'),
+                         ),
                       ],
                     ),
                   ),
